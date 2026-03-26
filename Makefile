@@ -1,4 +1,4 @@
-.PHONY: build run dev test test-verbose test-integration test-e2e test-coverage \
+.PHONY: build run dev test test-verbose test-integration test-integration-local test-e2e test-all test-coverage \
        lint lint-fix fmt vet generate validate-helm validate-kcc \
        docker-build docker-run preview-deploy preview-logs preview-teardown \
        deploy-production clean
@@ -42,10 +42,25 @@ test-verbose:
 	$(GO) test $(GOFLAGS) -v ./...
 
 test-integration:
-	$(GO) test $(GOFLAGS) -v -tags=integration ./test/integration/...
+	$(GO) test $(GOFLAGS) -v -tags=integration -count=1 -timeout=5m ./test/integration/...
+
+test-integration-local: build
+	@echo "Starting server for local integration tests..."
+	@OTEL_EXPORTER_OTLP_ENDPOINT="" PORT=8081 $(SERVER_BIN) & \
+		SERVER_PID=$$!; \
+		for i in $$(seq 1 30); do \
+			if curl -sf http://localhost:8081/healthz > /dev/null 2>&1; then break; fi; \
+			sleep 1; \
+		done; \
+		INTEGRATION_BASE_URL=http://localhost:8081 $(GO) test $(GOFLAGS) -v -tags=integration -count=1 -timeout=5m ./test/integration/...; \
+		TEST_EXIT=$$?; \
+		kill $$SERVER_PID 2>/dev/null || true; \
+		exit $$TEST_EXIT
 
 test-e2e:
-	$(GO) test $(GOFLAGS) -v -tags=e2e ./test/e2e/...
+	$(GO) test $(GOFLAGS) -v -tags=e2e -count=1 -timeout=5m ./test/e2e/...
+
+test-all: test test-integration-local test-e2e
 
 test-coverage:
 	$(GO) test $(GOFLAGS) -coverprofile=coverage.out -covermode=atomic ./...

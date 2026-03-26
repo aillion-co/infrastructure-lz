@@ -135,8 +135,8 @@ jobs:
               });
             }
 
-  e2e:
-    name: E2E Tests
+  integration:
+    name: Integration Tests
     needs: [preview]
     runs-on: ubuntu-latest
     steps:
@@ -158,9 +158,76 @@ jobs:
           cluster_name: ${{ env.GKE_CLUSTER }}
           location: ${{ env.GKE_REGION }}
 
-      - name: Port-forward and run E2E tests
+      - name: Port-forward to preview
         run: |
           NAMESPACE="preview-pr-${{ github.event.pull_request.number }}"
           kubectl port-forward -n "${NAMESPACE}" svc/iac-generator-preview 8080:8080 &
-          sleep 5
-          E2E_BASE_URL=http://localhost:8080 go test -v -tags=e2e ./test/e2e/...
+          PF_PID=$!
+          echo "PF_PID=${PF_PID}" >> $GITHUB_ENV
+
+          # Wait for port-forward to be ready
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/healthz > /dev/null 2>&1; then
+              echo "Port-forward ready"
+              break
+            fi
+            if [ "$i" -eq 30 ]; then
+              echo "Port-forward failed to become ready"
+              exit 1
+            fi
+            sleep 1
+          done
+
+      - name: Run integration tests
+        run: |
+          INTEGRATION_BASE_URL=http://localhost:8080 \
+            go test -v -race -tags=integration -count=1 -timeout=5m \
+            ./test/integration/...
+
+      - name: Run E2E tests
+        run: |
+          E2E_BASE_URL=http://localhost:8080 \
+            go test -v -race -tags=e2e -count=1 -timeout=5m \
+            ./test/e2e/...
+
+      - name: Cleanup port-forward
+        if: always()
+        run: |
+          if [ -n "${PF_PID}" ]; then
+            kill "${PF_PID}" 2>/dev/null || true
+          fi
+
+      - name: Post test results to PR
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = '${{ job.status }}' === 'success' ? 'Passed' : 'Failed';
+            const emoji = status === 'Passed' ? ':white_check_mark:' : ':x:';
+            const body = `### Integration & E2E Tests ${emoji}\n\n` +
+              `**Status:** ${status}\n` +
+              `**Namespace:** \`preview-pr-${{ github.event.pull_request.number }}\`\n` +
+              `**Commit:** \`${{ github.sha }}\`\n`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.user.type === 'Bot' && c.body.includes('Integration & E2E Tests'));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body,
+              });
+            }
