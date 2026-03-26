@@ -1,0 +1,11 @@
+bin/
+coverage.out
+coverage.html
+tmp_plan/
+.git/
+.github/
+*.md
+!CLAUDE.md
+deploy/
+test/
+docs/

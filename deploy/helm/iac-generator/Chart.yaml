@@ -1,0 +1,6 @@
+apiVersion: v2
+name: iac-generator
+description: IAC Generator - Google Cloud infrastructure code generator
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

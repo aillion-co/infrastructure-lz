@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IAC Generator - Infrastructure as Code</title>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <h1>IAC Generator</h1>
+        <p>Configure your Google Cloud infrastructure and download Helm charts with KCC resources.</p>
+    </header>
+
+    <main>
+        <form id="config-form" hx-post="/api/v1/generate" hx-swap="none"
+              hx-on::after-request="handleResponse(event)">
+
+            <fieldset>
+                <legend>Project</legend>
+                <label for="projectName">Project Name</label>
+                <input type="text" id="projectName" name="projectName" required placeholder="my-project">
+
+                <label for="projectID">GCP Project ID</label>
+                <input type="text" id="projectID" name="projectID" required placeholder="my-project-123">
+
+                <label for="region">Region</label>
+                <select id="region" name="region">
+                    <option value="us-central1">us-central1</option>
+                    <option value="us-east1">us-east1</option>
+                    <option value="us-west1">us-west1</option>
+                    <option value="europe-west1">europe-west1</option>
+                    <option value="asia-southeast1">asia-southeast1</option>
+                </select>
+
+                <label for="environment">Environment</label>
+                <select id="environment" name="environment">
+                    <option value="development">Development</option>
+                    <option value="staging">Staging</option>
+                    <option value="production">Production</option>
+                </select>
+            </fieldset>
+
+            <fieldset>
+                <legend>Networking</legend>
+                <label for="vpcName">VPC Name</label>
+                <input type="text" id="vpcName" name="network.vpcName" required placeholder="main-vpc">
+
+                <label for="subnetCIDR">Subnet CIDR</label>
+                <input type="text" id="subnetCIDR" name="network.subnetCIDR" required placeholder="10.0.0.0/20">
+
+                <label for="enableNAT">
+                    <input type="checkbox" id="enableNAT" name="network.enableNAT" checked>
+                    Enable Cloud NAT
+                </label>
+
+                <label for="enablePrivate">
+                    <input type="checkbox" id="enablePrivate" name="network.enablePrivate" checked>
+                    Private Google Access
+                </label>
+            </fieldset>
+
+            <fieldset>
+                <legend>GKE Cluster (optional)</legend>
+                <label for="enableGKE">
+                    <input type="checkbox" id="enableGKE" name="enableGKE"
+                           onchange="document.getElementById('gke-options').style.display = this.checked ? 'block' : 'none'">
+                    Enable GKE
+                </label>
+
+                <div id="gke-options" style="display: none;">
+                    <label for="clusterName">Cluster Name</label>
+                    <input type="text" id="clusterName" name="gke.clusterName" placeholder="main-cluster">
+
+                    <label for="enableAutopilot">
+                        <input type="checkbox" id="enableAutopilot" name="gke.enableAutopilot">
+                        Autopilot Mode
+                    </label>
+
+                    <label for="releaseChannel">Release Channel</label>
+                    <select id="releaseChannel" name="gke.releaseChannel">
+                        <option value="REGULAR">Regular</option>
+                        <option value="STABLE">Stable</option>
+                        <option value="RAPID">Rapid</option>
+                    </select>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>IAM</legend>
+                <label for="adminGroup">Admin Group Email</label>
+                <input type="email" id="adminGroup" name="iam.adminGroup" placeholder="gcp-admins@example.com">
+
+                <label for="viewerGroup">Viewer Group Email</label>
+                <input type="email" id="viewerGroup" name="iam.viewerGroup" placeholder="gcp-viewers@example.com">
+            </fieldset>
+
+            <button type="submit">Generate & Download</button>
+        </form>
+
+        <div id="status" class="status"></div>
+    </main>
+
+    <script>
+    function handleResponse(event) {
+        const status = document.getElementById('status');
+        if (event.detail.successful) {
+            const blob = new Blob([event.detail.xhr.response], { type: 'application/zip' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'iac-output.zip';
+            a.click();
+            URL.revokeObjectURL(url);
+            status.textContent = 'Download started!';
+            status.className = 'status success';
+        } else {
+            status.textContent = 'Generation failed. Check your inputs.';
+            status.className = 'status error';
+        }
+    }
+
+    // Configure htmx to get raw response for binary download
+    document.getElementById('config-form').addEventListener('htmx:configRequest', function(event) {
+        event.detail.headers['Accept'] = 'application/zip';
+    });
+    </script>
+</body>
+</html>

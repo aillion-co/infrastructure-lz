@@ -1,0 +1,101 @@
+name: Deploy Production
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GKE_CLUSTER: ${{ secrets.GKE_CLUSTER }}
+  GKE_REGION: ${{ secrets.GKE_REGION }}
+  GAR_LOCATION: ${{ secrets.GAR_LOCATION }}
+  GAR_REPOSITORY: ${{ secrets.GAR_REPOSITORY }}
+  GO_VERSION: "1.23"
+
+jobs:
+  test:
+    name: Full Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Run all tests
+        run: go test -race -count=1 ./...
+
+  deploy:
+    name: Deploy to Production
+    needs: [test]
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://iac-generator.internal
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.GAR_LOCATION }}-docker.pkg.dev --quiet
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GKE_REGION }}
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.0
+
+      - name: Build and push Docker image
+        run: |
+          IMAGE="${GAR_LOCATION}-docker.pkg.dev/${GCP_PROJECT_ID}/${GAR_REPOSITORY}/iac-generator"
+          docker build -t "${IMAGE}:${GITHUB_SHA}" -t "${IMAGE}:latest" .
+          docker push "${IMAGE}:${GITHUB_SHA}"
+          docker push "${IMAGE}:latest"
+          echo "IMAGE=${IMAGE}" >> $GITHUB_ENV
+
+      - name: Deploy to production
+        run: |
+          helm upgrade --install \
+            iac-generator \
+            deploy/helm/iac-generator/ \
+            --namespace production \
+            --set image.repository="${IMAGE}" \
+            --set image.tag="${GITHUB_SHA}" \
+            --set replicaCount=3 \
+            --set resources.requests.memory=256Mi \
+            --set resources.requests.cpu=250m \
+            --set resources.limits.memory=512Mi \
+            --set resources.limits.cpu=500m \
+            --set autoscaling.enabled=true \
+            --set autoscaling.minReplicas=3 \
+            --set autoscaling.maxReplicas=10 \
+            --wait --timeout=600s
+
+      - name: Verify rollout
+        run: |
+          kubectl rollout status deployment/iac-generator \
+            -n production --timeout=120s
+
+      - name: Smoke test
+        run: |
+          kubectl run smoke-test --rm -i --restart=Never \
+            -n production --image=curlimages/curl:latest -- \
+            curl -sf http://iac-generator:8080/healthz

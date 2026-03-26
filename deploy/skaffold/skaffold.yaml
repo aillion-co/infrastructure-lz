@@ -1,0 +1,44 @@
+apiVersion: skaffold/v4beta11
+kind: Config
+metadata:
+  name: iac-generator
+
+build:
+  artifacts:
+    - image: iac-generator
+      docker:
+        dockerfile: ../../Dockerfile
+  tagPolicy:
+    sha256: {}
+
+profiles:
+  - name: preview
+    activation:
+      - command: run
+    deploy:
+      helm:
+        releases:
+          - name: iac-generator-preview
+            chartPath: ../helm/iac-generator
+            namespace: preview
+            setValues:
+              replicaCount: 1
+              resources.requests.memory: 128Mi
+              resources.requests.cpu: 100m
+
+  - name: production
+    deploy:
+      helm:
+        releases:
+          - name: iac-generator
+            chartPath: ../helm/iac-generator
+            namespace: production
+            setValues:
+              replicaCount: 3
+              autoscaling.enabled: true
+              autoscaling.minReplicas: 3
+              autoscaling.maxReplicas: 10
+              resources.requests.memory: 256Mi
+              resources.requests.cpu: 250m
+              resources.limits.memory: 512Mi
+              resources.limits.cpu: 500m

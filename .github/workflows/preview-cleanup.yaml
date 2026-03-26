@@ -1,0 +1,42 @@
+name: Preview Cleanup
+
+on:
+  pull_request:
+    branches: [main]
+    types: [closed]
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GKE_CLUSTER: ${{ secrets.GKE_CLUSTER }}
+  GKE_REGION: ${{ secrets.GKE_REGION }}
+
+jobs:
+  cleanup:
+    name: Cleanup Preview
+    runs-on: ubuntu-latest
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GKE_REGION }}
+
+      - name: Delete preview namespace
+        run: |
+          NAMESPACE="preview-pr-${{ github.event.pull_request.number }}"
+          if kubectl get namespace "${NAMESPACE}" 2>/dev/null; then
+            kubectl delete namespace "${NAMESPACE}" --wait=false
+            echo "Deleted namespace ${NAMESPACE}"
+          else
+            echo "Namespace ${NAMESPACE} not found, nothing to clean up"
+          fi
