@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activations Accelerator</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <link rel="stylesheet" href="/static/wizard.css">
+</head>
+<body>
+    <header class="container">
+        <nav>
+            <ul>
+                <li><strong>Activations Accelerator</strong></li>
+            </ul>
+            <ul>
+                <li><a href="/">Legacy Generator</a></li>
+                <li><a href="/activate" class="contrast">New Activation</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <article>
+            <header>
+                <hgroup>
+                    <h2>New Activation</h2>
+                    <p>Configure your GCP Landing Zone and download Helm charts with Config Connector resources.</p>
+                </hgroup>
+                <div id="wizard-progress">
+                    <progress id="step-progress" value="0" max="4"></progress>
+                    <small id="step-label">Step 1 of 5: Customer Details</small>
+                </div>
+            </header>
+
+            <!-- Step 0: Customer Details -->
+            <section class="wizard-step" id="step-0" data-step="0">
+                <h3>Customer Details</h3>
+                <div class="grid">
+                    <label>
+                        Customer Name <span class="required">*</span>
+                        <input type="text" id="customerName" required placeholder="acme-corp"
+                               pattern="^[a-z][a-z0-9-]{2,30}$">
+                        <small>Lowercase letters, numbers, hyphens. 3-31 chars.</small>
+                    </label>
+                    <label>
+                        Contact Email <span class="required">*</span>
+                        <input type="email" id="contactEmail" required placeholder="admin@example.com">
+                    </label>
+                </div>
+                <div class="grid">
+                    <label>
+                        Contact Name
+                        <input type="text" id="contactName" placeholder="Jane Smith">
+                    </label>
+                    <label>
+                        Industry
+                        <select id="industry">
+                            <option value="">Select industry...</option>
+                            <option value="financial-services">Financial Services</option>
+                            <option value="public-sector">Public Sector</option>
+                            <option value="healthcare">Healthcare</option>
+                            <option value="retail">Retail</option>
+                            <option value="manufacturing">Manufacturing</option>
+                            <option value="media">Media & Entertainment</option>
+                            <option value="logistics">Logistics</option>
+                            <option value="security">Security</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </label>
+                </div>
+                <label>
+                    Notes
+                    <textarea id="notes" placeholder="Additional context about the engagement..."></textarea>
+                </label>
+            </section>
+
+            <!-- Step 1: Feature Selection -->
+            <section class="wizard-step" id="step-1" data-step="1" style="display:none;">
+                <h3>Select Features</h3>
+                <p>Choose the infrastructure components to include in your activation.</p>
+                <div class="grid" id="feature-grid"></div>
+            </section>
+
+            <!-- Step 2: Feature Configuration -->
+            <section class="wizard-step" id="step-2" data-step="2" style="display:none;">
+                <h3>Configure Features</h3>
+                <div id="feature-configs"></div>
+            </section>
+
+            <!-- Step 3: Review -->
+            <section class="wizard-step" id="step-3" data-step="3" style="display:none;">
+                <h3>Review</h3>
+                <div id="review-summary"></div>
+            </section>
+
+            <!-- Step 4: Result -->
+            <section class="wizard-step" id="step-4" data-step="4" style="display:none;">
+                <h3>Activation Complete</h3>
+                <div id="result-panel"></div>
+            </section>
+
+            <footer>
+                <div class="grid">
+                    <button id="btn-back" class="secondary outline" onclick="prevStep()" style="display:none;">Back</button>
+                    <div></div>
+                    <button id="btn-next" onclick="nextStep()">Continue</button>
+                </div>
+            </footer>
+        </article>
+    </main>
+
+    <script>
+    // State
+    let currentStep = 0;
+    const totalSteps = 5;
+    let features = [];
+    let selectedFeatures = new Set();
+
+    const stepLabels = [
+        'Customer Details',
+        'Feature Selection',
+        'Feature Configuration',
+        'Review',
+        'Complete'
+    ];
+
+    // Load features on init
+    fetch('/api/v1/features')
+        .then(r => r.json())
+        .then(data => {
+            features = data;
+            renderFeatureGrid();
+        });
+
+    function renderFeatureGrid() {
+        const grid = document.getElementById('feature-grid');
+        grid.innerHTML = features.map(f => `
+            <article class="feature-card ${f.maturity === 'stub' ? 'disabled' : ''}"
+                     id="feature-${f.id}" onclick="toggleFeature('${f.id}', this)">
+                <header>
+                    <hgroup>
+                        <h4>${f.name}</h4>
+                        <p><kbd>${f.maturity.toUpperCase()}</kbd> &middot; ${f.category}</p>
+                    </hgroup>
+                </header>
+                <p>${f.description}</p>
+                <footer>
+                    <label>
+                        <input type="checkbox" id="check-${f.id}" ${f.maturity === 'stub' ? 'disabled' : ''}
+                               onchange="event.stopPropagation()">
+                        Select
+                    </label>
+                </footer>
+            </article>
+        `).join('');
+    }
+
+    function toggleFeature(id, el) {
+        const f = features.find(x => x.id === id);
+        if (f.maturity === 'stub') return;
+        const cb = document.getElementById('check-' + id);
+        cb.checked = !cb.checked;
+        el.classList.toggle('selected', cb.checked);
+        if (cb.checked) {
+            selectedFeatures.add(id);
+            // Auto-select dependencies
+            if (f.dependsOn) {
+                f.dependsOn.forEach(dep => {
+                    selectedFeatures.add(dep);
+                    const depCb = document.getElementById('check-' + dep);
+                    if (depCb) { depCb.checked = true; }
+                    const depCard = document.getElementById('feature-' + dep);
+                    if (depCard) { depCard.classList.add('selected'); }
+                });
+            }
+        } else {
+            selectedFeatures.delete(id);
+        }
+    }
+
+    function renderFeatureConfigs() {
+        const container = document.getElementById('feature-configs');
+        let html = '';
+        selectedFeatures.forEach(fid => {
+            const f = features.find(x => x.id === fid);
+            html += `<details open><summary><strong>${f.name}</strong></summary>`;
+            html += getConfigFields(fid);
+            html += `</details>`;
+        });
+        container.innerHTML = html;
+    }
+
+    function getConfigFields(featureId) {
+        const configs = {
+            'bootstrap-org': `
+                <div class="grid">
+                    <label>Customer Name <input type="text" data-feature="bootstrap-org" data-field="customerName" class="cfg"></label>
+                    <label>Workload Name <input type="text" data-feature="bootstrap-org" data-field="workloadName" class="cfg" placeholder="web"></label>
+                </div>
+                <div class="grid">
+                    <label>Root Level
+                        <select data-feature="bootstrap-org" data-field="rootLevel" class="cfg">
+                            <option value="organization">Organisation</option>
+                            <option value="folder">Folder</option>
+                        </select>
+                    </label>
+                    <label>Root ID <input type="text" data-feature="bootstrap-org" data-field="rootId" class="cfg" placeholder="123456789"></label>
+                </div>
+                <div class="grid">
+                    <label>Billing Account <input type="text" data-feature="bootstrap-org" data-field="billingAccount" class="cfg" placeholder="AAAAAA-BBBBBB-CCCCCC"></label>
+                    <label>Region
+                        <select data-feature="bootstrap-org" data-field="region" class="cfg">
+                            <option value="europe-west2">europe-west2</option>
+                            <option value="us-central1">us-central1</option>
+                            <option value="europe-west1">europe-west1</option>
+                            <option value="asia-southeast1">asia-southeast1</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="grid">
+                    <label>Environments <input type="text" data-feature="bootstrap-org" data-field="envs" class="cfg" value="dev,test,prod"></label>
+                    <label>VCS
+                        <select data-feature="bootstrap-org" data-field="vcs" class="cfg">
+                            <option value="github">GitHub</option>
+                            <option value="gitlab">GitLab</option>
+                            <option value="bitbucket">Bitbucket</option>
+                            <option value="none">None</option>
+                        </select>
+                    </label>
+                </div>
+                <fieldset>
+                    <label><input type="checkbox" data-feature="bootstrap-org" data-field="orgPolicies" class="cfg"> Enable Org Policies</label>
+                    <label><input type="checkbox" data-feature="bootstrap-org" data-field="vpcSc" class="cfg"> VPC Service Controls</label>
+                    <label><input type="checkbox" data-feature="bootstrap-org" data-field="sharedVpc" class="cfg"> Shared VPC</label>
+                    <label><input type="checkbox" data-feature="bootstrap-org" data-field="gkeCluster" class="cfg"> GKE Clusters per Environment</label>
+                    <label><input type="checkbox" data-feature="bootstrap-org" data-field="envFolders" class="cfg"> Environment Folders</label>
+                </fieldset>`,
+            'bigquery-analytics': `
+                <div class="grid">
+                    <label>Project Name <input type="text" data-feature="bigquery-analytics" data-field="projectName" class="cfg"></label>
+                    <label>Project ID <input type="text" data-feature="bigquery-analytics" data-field="projectId" class="cfg"></label>
+                </div>
+                <div class="grid">
+                    <label>Region <input type="text" data-feature="bigquery-analytics" data-field="region" class="cfg" value="europe-west2"></label>
+                    <label>Dataset ID <input type="text" data-feature="bigquery-analytics" data-field="datasetId" class="cfg" value="analytics"></label>
+                </div>`,
+            'dynamic-developer-portal': `
+                <div class="grid">
+                    <label>Project Name <input type="text" data-feature="dynamic-developer-portal" data-field="projectName" class="cfg"></label>
+                    <label>GCP Project ID <input type="text" data-feature="dynamic-developer-portal" data-field="gcpProjectId" class="cfg"></label>
+                </div>
+                <div class="grid">
+                    <label>GCP Region <input type="text" data-feature="dynamic-developer-portal" data-field="gcpRegion" class="cfg" value="europe-west2"></label>
+                    <label>Git Repo SSH URL <input type="text" data-feature="dynamic-developer-portal" data-field="gitRepoSshUrl" class="cfg" placeholder="git@github.com:org/config.git"></label>
+                </div>`,
+            'hardened-image-bakery': `
+                <div class="grid">
+                    <label>Project Name <input type="text" data-feature="hardened-image-bakery" data-field="projectName" class="cfg"></label>
+                    <label>Project ID <input type="text" data-feature="hardened-image-bakery" data-field="projectId" class="cfg"></label>
+                </div>
+                <div class="grid">
+                    <label>Region <input type="text" data-feature="hardened-image-bakery" data-field="region" class="cfg" value="europe-west2"></label>
+                    <label>Zone <input type="text" data-feature="hardened-image-bakery" data-field="zone" class="cfg" value="europe-west2-a"></label>
+                </div>`,
+            'secure-inferencing': `
+                <div class="grid">
+                    <label>Project Name <input type="text" data-feature="secure-inferencing" data-field="projectName" class="cfg"></label>
+                    <label>Project ID <input type="text" data-feature="secure-inferencing" data-field="projectId" class="cfg"></label>
+                </div>
+                <div class="grid">
+                    <label>Region <input type="text" data-feature="secure-inferencing" data-field="region" class="cfg" value="europe-west2"></label>
+                    <label>Gemini Model <input type="text" data-feature="secure-inferencing" data-field="geminiModel" class="cfg" value="gemini-2.0-flash"></label>
+                </div>
+                <fieldset>
+                    <label><input type="checkbox" data-feature="secure-inferencing" data-field="enableGemini" class="cfg" checked> Enable Gemini</label>
+                    <label><input type="checkbox" data-feature="secure-inferencing" data-field="enableAuditLogging" class="cfg" checked> Audit Logging</label>
+                </fieldset>`,
+            'skaffold-application-development': `
+                <div class="grid">
+                    <label>Project Name <input type="text" data-feature="skaffold-application-development" data-field="projectName" class="cfg"></label>
+                    <label>Service Name <input type="text" data-feature="skaffold-application-development" data-field="serviceName" class="cfg"></label>
+                </div>
+                <div class="grid">
+                    <label>Cluster Type
+                        <select data-feature="skaffold-application-development" data-field="clusterType" class="cfg">
+                            <option value="autopilot">Autopilot</option>
+                            <option value="standard">Standard</option>
+                        </select>
+                    </label>
+                    <label>Machine Type
+                        <select data-feature="skaffold-application-development" data-field="machineType" class="cfg">
+                            <option value="e2-standard-4">e2-standard-4</option>
+                            <option value="e2-standard-8">e2-standard-8</option>
+                            <option value="n2-standard-4">n2-standard-4</option>
+                            <option value="n2-standard-8">n2-standard-8</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="grid">
+                    <label>Release Channel
+                        <select data-feature="skaffold-application-development" data-field="releaseChannel" class="cfg">
+                            <option value="REGULAR">Regular</option>
+                            <option value="STABLE">Stable</option>
+                            <option value="RAPID">Rapid</option>
+                        </select>
+                    </label>
+                    <label>SQL Database
+                        <select data-feature="skaffold-application-development" data-field="sqlDb" class="cfg">
+                            <option value="no">No</option>
+                            <option value="yes">Yes (PostgreSQL)</option>
+                        </select>
+                    </label>
+                </div>`
+        };
+        return configs[featureId] || '<p>No configuration options.</p>';
+    }
+
+    function renderReview() {
+        const container = document.getElementById('review-summary');
+        const customer = {
+            customerName: document.getElementById('customerName').value,
+            contactEmail: document.getElementById('contactEmail').value,
+            contactName: document.getElementById('contactName').value,
+            industry: document.getElementById('industry').value,
+        };
+
+        let html = `<h4>Customer</h4><table>
+            <tr><td>Name</td><td><strong>${customer.customerName}</strong></td></tr>
+            <tr><td>Email</td><td>${customer.contactEmail}</td></tr>
+            <tr><td>Contact</td><td>${customer.contactName || '-'}</td></tr>
+            <tr><td>Industry</td><td>${customer.industry || '-'}</td></tr>
+        </table>`;
+
+        html += `<h4>Selected Features</h4><table><thead><tr><th>Feature</th><th>Category</th><th>Status</th></tr></thead><tbody>`;
+        selectedFeatures.forEach(fid => {
+            const f = features.find(x => x.id === fid);
+            html += `<tr><td>${f.name}</td><td>${f.category}</td><td><kbd>${f.maturity.toUpperCase()}</kbd></td></tr>`;
+        });
+        html += `</tbody></table>`;
+        container.innerHTML = html;
+    }
+
+    function collectPayload() {
+        const featureList = [];
+        selectedFeatures.forEach(fid => {
+            const cfg = {};
+            document.querySelectorAll(`.cfg[data-feature="${fid}"]`).forEach(el => {
+                const field = el.dataset.field;
+                if (el.type === 'checkbox') {
+                    cfg[field] = el.checked;
+                } else {
+                    cfg[field] = el.value;
+                }
+            });
+            featureList.push({ featureId: fid, enabled: true, config: cfg });
+        });
+
+        return {
+            customer: {
+                customerName: document.getElementById('customerName').value,
+                contactEmail: document.getElementById('contactEmail').value,
+                contactName: document.getElementById('contactName').value,
+                industry: document.getElementById('industry').value,
+                notes: document.getElementById('notes').value,
+            },
+            features: featureList,
+        };
+    }
+
+    async function submitActivation() {
+        const btn = document.getElementById('btn-next');
+        btn.textContent = 'Generating...';
+        btn.disabled = true;
+        btn.setAttribute('aria-busy', 'true');
+
+        try {
+            const resp = await fetch('/api/v1/activate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(collectPayload()),
+            });
+
+            const panel = document.getElementById('result-panel');
+            if (resp.ok) {
+                const blob = await resp.blob();
+                const url = URL.createObjectURL(blob);
+                const name = document.getElementById('customerName').value;
+                panel.innerHTML = `
+                    <p role="alert" class="success">Activation generated successfully.</p>
+                    <a href="${url}" download="${name}-activation.zip" role="button">Download ZIP</a>
+                    <p><small>Contains Helm umbrella chart with sub-charts for each selected feature.</small></p>
+                `;
+            } else {
+                const err = await resp.json().catch(() => ({ error: resp.statusText }));
+                panel.innerHTML = `<p role="alert" class="error">Generation failed: ${JSON.stringify(err.errors || err.error)}</p>`;
+            }
+        } catch (e) {
+            document.getElementById('result-panel').innerHTML = `<p role="alert" class="error">Network error: ${e.message}</p>`;
+        }
+
+        btn.style.display = 'none';
+        document.getElementById('btn-back').style.display = 'none';
+    }
+
+    // Navigation
+    function showStep(step) {
+        document.querySelectorAll('.wizard-step').forEach(el => {
+            el.style.display = el.dataset.step == step ? 'block' : 'none';
+        });
+        document.getElementById('step-progress').value = step;
+        document.getElementById('step-label').textContent = `Step ${step + 1} of ${totalSteps}: ${stepLabels[step]}`;
+        document.getElementById('btn-back').style.display = step > 0 && step < 4 ? '' : 'none';
+        document.getElementById('btn-next').style.display = step < 4 ? '' : 'none';
+
+        if (step === 3) {
+            document.getElementById('btn-next').textContent = 'Generate Activation';
+        } else {
+            document.getElementById('btn-next').textContent = 'Continue';
+            document.getElementById('btn-next').disabled = false;
+            document.getElementById('btn-next').removeAttribute('aria-busy');
+        }
+    }
+
+    function nextStep() {
+        if (currentStep === 0) {
+            if (!document.getElementById('customerName').value || !document.getElementById('contactEmail').value) {
+                alert('Customer name and email are required.');
+                return;
+            }
+            // Pre-fill customer name in bootstrap-org config
+        }
+        if (currentStep === 1) {
+            if (selectedFeatures.size === 0) {
+                alert('Please select at least one feature.');
+                return;
+            }
+            renderFeatureConfigs();
+        }
+        if (currentStep === 2) {
+            renderReview();
+        }
+        if (currentStep === 3) {
+            submitActivation();
+            currentStep = 4;
+            showStep(currentStep);
+            return;
+        }
+        currentStep = Math.min(currentStep + 1, totalSteps - 1);
+        showStep(currentStep);
+    }
+
+    function prevStep() {
+        currentStep = Math.max(currentStep - 1, 0);
+        showStep(currentStep);
+    }
+
+    // Init
+    showStep(0);
+    </script>
+</body>
+</html>

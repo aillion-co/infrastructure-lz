@@ -9,7 +9,13 @@ import (
 	"github.com/aillion-co/infrastructure-lz/internal/web"
 )
 
-func NewRouter(gen *generator.Generator, activationGen *generator.ActivationGenerator) http.Handler {
+// RouterConfig holds configuration for the API router.
+type RouterConfig struct {
+	AuthEnabled    bool
+	AllowedDomains []string
+}
+
+func NewRouter(gen *generator.Generator, activationGen *generator.ActivationGenerator, cfg ...RouterConfig) http.Handler {
 	mux := http.NewServeMux()
 
 	// Health checks
@@ -28,11 +34,24 @@ func NewRouter(gen *generator.Generator, activationGen *generator.ActivationGene
 	// Web UI
 	webHandler := web.NewHandler()
 	mux.Handle("GET /", webHandler)
+	mux.HandleFunc("GET /activate", webHandler.ActivateHandler)
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("internal/web/static"))))
 
-	// Apply middleware (order: outermost runs first)
+	// Build middleware chain (order: outermost runs first)
 	var handler http.Handler = mux
 	handler = middleware.Logging(handler)
+
+	// Auth middleware (optional, configurable)
+	var authCfg middleware.AuthConfig
+	if len(cfg) > 0 {
+		authCfg = middleware.AuthConfig{
+			Enabled:        cfg[0].AuthEnabled,
+			AllowedDomains: cfg[0].AllowedDomains,
+			SkipPaths:      []string{"/healthz", "/readyz", "/", "/activate", "/static/"},
+		}
+	}
+	handler = middleware.Auth(authCfg)(handler)
+
 	handler = middleware.Telemetry(handler)
 	handler = middleware.Recovery(handler)
 

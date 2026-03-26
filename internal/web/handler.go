@@ -29,3 +29,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
 }
+
+// ActivateHandler serves the activation wizard UI.
+func (h *Handler) ActivateHandler(w http.ResponseWriter, r *http.Request) {
+	if err := h.templates.ExecuteTemplate(w, "activate.html", nil); err != nil {
+		slog.Error("failed to render activate template", "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+	}
+}
