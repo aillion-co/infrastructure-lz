@@ -301,12 +301,26 @@ Set `OTEL_EXPORTER_OTLP_ENDPOINT` to the collector address.
 - Golden file tests for generated output in `test/fixtures/`
 - Test names: `TestFunctionName_Scenario_ExpectedBehavior`
 
-### Git
+### Git — Branch-per-Feature (MANDATORY)
 
-- Branch names: `feat/description`, `fix/description`, `refactor/description`
+Every new feature MUST be developed on its own branch. No feature work directly on `main`.
+
+**Workflow:**
+1. Create a feature branch from `main`: `feat/description`, `fix/description`, `refactor/description`
+2. Develop, commit, and push to the feature branch
+3. Run `make lint && make test` — both MUST pass before opening a PR
+4. Open a PR to `main` — CI runs lint, test, build, and integration tests automatically
+5. All CI checks MUST pass before the PR can be merged
+6. Merge via squash-and-merge to keep `main` history clean
+
+**Branch naming:** `feat/<feature-name>`, `fix/<bug-name>`, `refactor/<scope>`
+
+**Rules:**
 - Commit messages: imperative mood, <72 chars first line
 - One logical change per commit
 - Always rebase on main before opening PR
+- NEVER push directly to `main` — all changes go through PRs
+- Tests MUST pass on the feature branch before merge
 
 ## Environment Variables
 
@@ -321,12 +335,14 @@ Set `OTEL_EXPORTER_OTLP_ENDPOINT` to the collector address.
 
 ## CI/CD Pipeline
 
-### On Pull Request
-1. `lint` → `test` → `build` (parallel)
-2. Docker image build + push to Artifact Registry
-3. Preview deploy to GKE namespace
-4. E2E tests against preview
-5. Results posted as PR comment
+### On Pull Request (merge gate — ALL must pass)
+1. `lint` + `test` + `build` + `validate-helm` (parallel)
+2. `integration-test` (after build, runs server binary + integration suite)
+3. `merge-gate` — aggregates all checks; PR cannot merge unless this passes
+4. `docker-build` — image build (no push)
+5. Preview deploy to GKE namespace (preview-deploy workflow)
+6. Integration + E2E tests against preview
+7. Results posted as PR comments
 
 ### On Merge to main
 1. Full test suite
