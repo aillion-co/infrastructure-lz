@@ -9,16 +9,21 @@ import (
 	"github.com/aillion-co/infrastructure-lz/internal/web"
 )
 
-func NewRouter(gen *generator.Generator) http.Handler {
+func NewRouter(gen *generator.Generator, activationGen *generator.ActivationGenerator) http.Handler {
 	mux := http.NewServeMux()
 
 	// Health checks
 	mux.HandleFunc("GET /healthz", handlers.Healthz)
 	mux.HandleFunc("GET /readyz", handlers.Readyz)
 
-	// API
+	// Legacy single-project API
 	generateHandler := handlers.NewGenerateHandler(gen)
 	mux.Handle("POST /api/v1/generate", generateHandler)
+
+	// Activation API
+	activateHandler := handlers.NewActivateHandler(activationGen)
+	mux.Handle("POST /api/v1/activate", activateHandler)
+	mux.HandleFunc("GET /api/v1/features", handlers.FeaturesHandler)
 
 	// Web UI
 	webHandler := web.NewHandler()

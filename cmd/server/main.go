@@ -39,7 +39,8 @@ func run() error {
 	defer shutdown(context.Background())
 
 	gen := generator.New()
-	router := api.NewRouter(gen)
+	activationGen := generator.NewActivationGenerator()
+	router := api.NewRouter(gen, activationGen)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,
