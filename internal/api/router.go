@@ -25,9 +25,10 @@ func NewRouter(gen *generator.Generator) http.Handler {
 	mux.Handle("GET /", webHandler)
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("internal/web/static"))))
 
-	// Apply middleware
+	// Apply middleware (order: outermost runs first)
 	var handler http.Handler = mux
 	handler = middleware.Logging(handler)
+	handler = middleware.Telemetry(handler)
 	handler = middleware.Recovery(handler)
 
 	return handler

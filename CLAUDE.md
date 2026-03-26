@@ -233,6 +233,51 @@ Once a feature is complete and all checks pass, the CI pipeline will:
 - **Logging**: Use `slog` (structured logging) everywhere
 - **Testing**: Table-driven tests, use `testify/assert` for assertions
 
+### Observability (MANDATORY)
+
+All code MUST be instrumented with OpenTelemetry. This is not optional.
+
+**Traces**: Every public function that does I/O or non-trivial work MUST create a span:
+```go
+ctx, span := telemetry.Tracer().Start(ctx, "package.FunctionName")
+defer span.End()
+```
+
+**Span attributes**: Add meaningful attributes to spans:
+```go
+span.SetAttributes(
+    attribute.String("project.id", projectID),
+    attribute.Int("result.count", len(results)),
+)
+```
+
+**Error recording**: All errors MUST be recorded on the span:
+```go
+if err != nil {
+    span.RecordError(err)
+    span.SetStatus(codes.Error, "description")
+    return fmt.Errorf("context: %w", err)
+}
+```
+
+**Metrics**: Use pre-registered metrics from `telemetry.GetMetrics()`:
+- Counters for totals (requests, errors, resources generated)
+- Histograms for durations and sizes
+- Register new metrics in `internal/telemetry/metrics.go`
+
+**Logging**: Use context-aware logging (`slog.InfoContext(ctx, ...)`) so trace IDs
+are correlated with log entries.
+
+**HTTP handlers**: All handlers get automatic tracing via the `middleware.Telemetry`
+middleware. Add handler-specific spans for sub-operations.
+
+**Adding new metrics**: Add fields to the `Metrics` struct in
+`internal/telemetry/metrics.go` and register them in `GetMetrics()`.
+
+**Google Cloud Observability**: The OTLP exporter sends traces and metrics to the
+Google Cloud OTEL Collector, which forwards to Cloud Trace and Cloud Monitoring.
+Set `OTEL_EXPORTER_OTLP_ENDPOINT` to the collector address.
+
 ### HTTP API
 
 - All API endpoints under `/api/v1/`
@@ -303,7 +348,9 @@ Claude Code can be triggered as a GitHub Actions agent to:
 - `text/template` — IAC generation templates (stdlib)
 - `archive/zip` — Zip file creation (stdlib)
 - `slog` — Structured logging (stdlib)
-- `go.opentelemetry.io/otel` — Telemetry
+- `go.opentelemetry.io/otel` — Tracing and metrics (OTEL SDK)
+- `go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc` — OTLP trace exporter
+- `go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc` — OTLP metric exporter
 - `github.com/stretchr/testify` — Test assertions
 - `helm.sh/helm/v3` — Helm chart validation
 - `sigs.k8s.io/yaml` — YAML marshaling for KCC resources
@@ -317,3 +364,6 @@ Claude Code can be triggered as a GitHub Actions agent to:
 - Do NOT deploy without running `make lint && make test` first
 - Do NOT add optional parameters or feature flags for hypothetical future needs
 - Do NOT add comments that restate what the code does
+- Do NOT write functions that do I/O without OpenTelemetry spans
+- Do NOT use bare `slog.Info()` — use `slog.InfoContext(ctx, ...)` to correlate with traces
+- Do NOT create metrics outside of `internal/telemetry/metrics.go`

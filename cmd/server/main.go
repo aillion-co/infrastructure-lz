@@ -32,7 +32,7 @@ func run() error {
 		return fmt.Errorf("loading config: %w", err)
 	}
 
-	shutdown, err := telemetry.Setup(ctx, "iac-generator", cfg.OTLPEndpoint)
+	shutdown, err := telemetry.Setup(ctx, "iac-generator", config.Version, cfg.OTLPEndpoint)
 	if err != nil {
 		return fmt.Errorf("setting up telemetry: %w", err)
 	}

@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath' | { read -r f; if echo \"$f\" | grep -qE '\\.go$'; then if ! bash scripts/check-telemetry.sh 2>&1; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"TELEMETRY CHECK FAILED: One or more Go files with context.Context functions are missing OpenTelemetry instrumentation. See CLAUDE.md Observability (MANDATORY) section. You MUST add telemetry spans and use slog.*Context() before proceeding.\"}}'; fi; fi; }",
+            "timeout": 30,
+            "statusMessage": "Checking OTEL instrumentation..."
+          }
+        ]
+      }
+    ]
+  }
+}
