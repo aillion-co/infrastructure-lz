@@ -1,0 +1,96 @@
+apiVersion: resourcemanager.cnrm.cloud.google.com/v1beta1
+kind: ResourceManagerPolicy
+metadata:
+  name: acme-skip-default-network
+  namespace: config-connector
+spec:
+  organizationRef:
+    external: 123456789012
+  constraint: constraints/compute.skipDefaultNetworkCreation
+  booleanPolicy:
+    enforced: true
+---
+apiVersion: resourcemanager.cnrm.cloud.google.com/v1beta1
+kind: ResourceManagerPolicy
+metadata:
+  name: acme-require-os-login
+  namespace: config-connector
+spec:
+  organizationRef:
+    external: 123456789012
+  constraint: constraints/compute.requireOsLogin
+  booleanPolicy:
+    enforced: true
+---
+apiVersion: resourcemanager.cnrm.cloud.google.com/v1beta1
+kind: ResourceManagerPolicy
+metadata:
+  name: acme-disable-sa-key-creation
+  namespace: config-connector
+spec:
+  organizationRef:
+    external: 123456789012
+  constraint: constraints/iam.disableServiceAccountKeyCreation
+  booleanPolicy:
+    enforced: true
+---
+apiVersion: resourcemanager.cnrm.cloud.google.com/v1beta1
+kind: ResourceManagerPolicy
+metadata:
+  name: acme-public-access-prevention
+  namespace: config-connector
+spec:
+  organizationRef:
+    external: 123456789012
+  constraint: constraints/storage.publicAccessPrevention
+  booleanPolicy:
+    enforced: true
+---
+apiVersion: resourcemanager.cnrm.cloud.google.com/v1beta1
+kind: ResourceManagerPolicy
+metadata:
+  name: acme-uniform-bucket-access
+  namespace: config-connector
+spec:
+  organizationRef:
+    external: 123456789012
+  constraint: constraints/storage.uniformBucketLevelAccess
+  booleanPolicy:
+    enforced: true
+---
+apiVersion: resourcemanager.cnrm.cloud.google.com/v1beta1
+kind: ResourceManagerPolicy
+metadata:
+  name: acme-restrict-public-ip-sql
+  namespace: config-connector
+spec:
+  organizationRef:
+    external: 123456789012
+  constraint: constraints/sql.restrictPublicIp
+  booleanPolicy:
+    enforced: true
+---
+apiVersion: resourcemanager.cnrm.cloud.google.com/v1beta1
+kind: ResourceManagerPolicy
+metadata:
+  name: acme-vm-external-ip
+  namespace: config-connector
+spec:
+  organizationRef:
+    external: 123456789012
+  constraint: constraints/compute.vmExternalIpAccess
+  listPolicy:
+    allValues: DENY
+---
+apiVersion: resourcemanager.cnrm.cloud.google.com/v1beta1
+kind: ResourceManagerPolicy
+metadata:
+  name: acme-resource-locations
+  namespace: config-connector
+spec:
+  organizationRef:
+    external: 123456789012
+  constraint: constraints/gcp.resourceLocations
+  listPolicy:
+    allowedValues:
+      - in:australia-southeast1

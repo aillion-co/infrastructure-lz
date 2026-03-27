@@ -1,0 +1,65 @@
+apiVersion: compute.cnrm.cloud.google.com/v1beta1
+kind: ComputeSharedVPCHostProject
+metadata:
+  name: acme-mgmt-shared-vpc
+  namespace: config-connector
+spec:
+  projectRef:
+    name: acme-mgmt
+---
+apiVersion: compute.cnrm.cloud.google.com/v1beta1
+kind: ComputeNetwork
+metadata:
+  name: acme-shared-vpc
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-mgmt
+spec:
+  routingMode: GLOBAL
+  autoCreateSubnetworks: false
+  deleteDefaultRoutesOnCreate: true
+---
+apiVersion: compute.cnrm.cloud.google.com/v1beta1
+kind: ComputeSubnetwork
+metadata:
+  name: acme-shared-australia-southeast1
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-mgmt
+spec:
+  region: australia-southeast1
+  ipCidrRange: "10.0.0.0/20"
+  networkRef:
+    name: acme-shared-vpc
+  privateIpGoogleAccess: true
+  secondaryIpRange:
+    - rangeName: pods
+      ipCidrRange: "10.64.0.0/14"
+    - rangeName: services
+      ipCidrRange: "10.68.0.0/20"
+---
+apiVersion: compute.cnrm.cloud.google.com/v1beta1
+kind: ComputeRouter
+metadata:
+  name: acme-shared-router
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-mgmt
+spec:
+  region: australia-southeast1
+  networkRef:
+    name: acme-shared-vpc
+---
+apiVersion: compute.cnrm.cloud.google.com/v1beta1
+kind: ComputeRouterNAT
+metadata:
+  name: acme-shared-nat
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-mgmt
+spec:
+  region: australia-southeast1
+  routerRef:
+    name: acme-shared-router
+  natIpAllocateOption: AUTO_ONLY
+  sourceSubnetworkIpRangesToNat: ALL_SUBNETWORKS_ALL_IP_RANGES

@@ -1,0 +1,53 @@
+apiVersion: cloudbuild.cnrm.cloud.google.com/v1beta1
+kind: CloudBuildTrigger
+metadata:
+  name: img-bakery-ubuntu-build
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-images-prod
+spec:
+  description: Build CIS-hardened Ubuntu image
+  triggerTemplate:
+    branchName: main
+  build:
+    step:
+      - name: hashicorp/packer:1.9.4
+        args:
+          - build
+          - -var
+          - project_id=acme-images-prod
+          - -var
+          - zone=us-central1-a
+          - -var
+          - network=shared-vpc
+          - -var
+          - subnetwork=bakery-subnet
+          - packer/template-ubuntu-base.pkr.hcl
+    serviceAccount: projects/acme-images-prod/serviceAccounts/img-bakery-image-builder@acme-images-prod.iam.gserviceaccount.com
+---
+apiVersion: cloudbuild.cnrm.cloud.google.com/v1beta1
+kind: CloudBuildTrigger
+metadata:
+  name: img-bakery-windows-build
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-images-prod
+spec:
+  description: Build CIS-hardened Windows image
+  triggerTemplate:
+    branchName: main
+  build:
+    step:
+      - name: hashicorp/packer:1.9.4
+        args:
+          - build
+          - -var
+          - project_id=acme-images-prod
+          - -var
+          - zone=us-central1-a
+          - -var
+          - network=shared-vpc
+          - -var
+          - subnetwork=bakery-subnet
+          - packer/template-windows-base.pkr.hcl
+    serviceAccount: projects/acme-images-prod/serviceAccounts/img-bakery-image-builder@acme-images-prod.iam.gserviceaccount.com

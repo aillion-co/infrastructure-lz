@@ -1,0 +1,25 @@
+apiVersion: container.cnrm.cloud.google.com/v1beta1
+kind: ContainerCluster
+metadata:
+  name: devportal-config-controller
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-devportal-prod
+spec:
+  location: us-central1
+  enableAutopilot: true
+  releaseChannel:
+    channel: REGULAR
+  networkRef:
+    name: shared-vpc
+  subnetworkRef:
+    name: devportal-subnet
+  privateClusterConfig:
+    enablePrivateNodes: true
+    enablePrivateEndpoint: false
+    masterIpv4CidrBlock: "172.16.1.0/28"
+  workloadIdentityConfig:
+    workloadPool: acme-devportal-prod.svc.id.goog
+  addonsConfig:
+    configConnectorConfig:
+      enabled: true

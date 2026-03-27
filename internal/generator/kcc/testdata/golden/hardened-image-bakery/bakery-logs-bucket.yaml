@@ -1,0 +1,15 @@
+apiVersion: storage.cnrm.cloud.google.com/v1beta1
+kind: StorageBucket
+metadata:
+  name: acme-images-prod-build-logs
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-images-prod
+spec:
+  location: us-central1
+  uniformBucketLevelAccess: true
+  lifecycleRule:
+    - action:
+        type: Delete
+      condition:
+        age: 90

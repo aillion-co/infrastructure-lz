@@ -1,0 +1,29 @@
+apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: Service
+metadata:
+  name: acme-images-prod-cloudbuild
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-images-prod
+spec:
+  resourceID: cloudbuild.googleapis.com
+---
+apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: Service
+metadata:
+  name: acme-images-prod-compute
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-images-prod
+spec:
+  resourceID: compute.googleapis.com
+---
+apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: Service
+metadata:
+  name: acme-images-prod-artifactregistry
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-images-prod
+spec:
+  resourceID: artifactregistry.googleapis.com

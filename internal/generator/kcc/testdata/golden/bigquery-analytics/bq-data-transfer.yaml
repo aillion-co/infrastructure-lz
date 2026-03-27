@@ -1,0 +1,13 @@
+apiVersion: bigquery.cnrm.cloud.google.com/v1beta1
+kind: BigQueryDataTransferConfig
+metadata:
+  name: analytics-proj-data-transfer
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-analytics-prod
+spec:
+  displayName: analytics-proj Data Transfer
+  location: us-central1
+  dataSourceID: google_cloud_storage
+  destinationDatasetID: customer_events
+  schedule: "every 24 hours"

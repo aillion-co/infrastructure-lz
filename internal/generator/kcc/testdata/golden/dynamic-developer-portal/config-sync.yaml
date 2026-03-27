@@ -1,0 +1,14 @@
+apiVersion: configsync.gke.io/v1beta1
+kind: RepoSync
+metadata:
+  name: repo-sync
+  namespace: backstage
+spec:
+  sourceFormat: unstructured
+  git:
+    repo: git@github.com:acme-corp/platform-config.git
+    branch: main
+    dir: /config
+    auth: ssh
+    secretRef:
+      name: git-creds

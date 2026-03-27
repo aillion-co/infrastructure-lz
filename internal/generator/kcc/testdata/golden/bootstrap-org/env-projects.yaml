@@ -1,0 +1,169 @@
+
+apiVersion: resourcemanager.cnrm.cloud.google.com/v1beta1
+kind: Folder
+metadata:
+  name: acme-dev
+  namespace: config-connector
+spec:
+  displayName: acme-dev
+  folderRef:
+    name: acme-mgmt
+---
+apiVersion: resourcemanager.cnrm.cloud.google.com/v1beta1
+kind: Project
+metadata:
+  name: acme-platform-dev
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/auto-create-network: "false"
+spec:
+  name: acme-platform-dev
+  folderRef:
+    name: acme-dev
+  billingAccountRef:
+    external: AAAAAA-BBBBBB-CCCCCC
+---
+apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: Service
+metadata:
+  name: acme-platform-dev-compute
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-platform-dev
+spec:
+  resourceID: compute.googleapis.com
+---
+apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: Service
+metadata:
+  name: acme-platform-dev-container
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-platform-dev
+spec:
+  resourceID: container.googleapis.com
+---
+apiVersion: compute.cnrm.cloud.google.com/v1beta1
+kind: ComputeSharedVPCServiceProject
+metadata:
+  name: acme-platform-dev-service
+  namespace: config-connector
+spec:
+  projectRef:
+    name: acme-platform-dev
+  hostProjectRef:
+    name: acme-mgmt
+---
+
+apiVersion: resourcemanager.cnrm.cloud.google.com/v1beta1
+kind: Folder
+metadata:
+  name: acme-test
+  namespace: config-connector
+spec:
+  displayName: acme-test
+  folderRef:
+    name: acme-mgmt
+---
+apiVersion: resourcemanager.cnrm.cloud.google.com/v1beta1
+kind: Project
+metadata:
+  name: acme-platform-test
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/auto-create-network: "false"
+spec:
+  name: acme-platform-test
+  folderRef:
+    name: acme-test
+  billingAccountRef:
+    external: AAAAAA-BBBBBB-CCCCCC
+---
+apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: Service
+metadata:
+  name: acme-platform-test-compute
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-platform-test
+spec:
+  resourceID: compute.googleapis.com
+---
+apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: Service
+metadata:
+  name: acme-platform-test-container
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-platform-test
+spec:
+  resourceID: container.googleapis.com
+---
+apiVersion: compute.cnrm.cloud.google.com/v1beta1
+kind: ComputeSharedVPCServiceProject
+metadata:
+  name: acme-platform-test-service
+  namespace: config-connector
+spec:
+  projectRef:
+    name: acme-platform-test
+  hostProjectRef:
+    name: acme-mgmt
+---
+
+apiVersion: resourcemanager.cnrm.cloud.google.com/v1beta1
+kind: Folder
+metadata:
+  name: acme-prod
+  namespace: config-connector
+spec:
+  displayName: acme-prod
+  folderRef:
+    name: acme-mgmt
+---
+apiVersion: resourcemanager.cnrm.cloud.google.com/v1beta1
+kind: Project
+metadata:
+  name: acme-platform-prod
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/auto-create-network: "false"
+spec:
+  name: acme-platform-prod
+  folderRef:
+    name: acme-prod
+  billingAccountRef:
+    external: AAAAAA-BBBBBB-CCCCCC
+---
+apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: Service
+metadata:
+  name: acme-platform-prod-compute
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-platform-prod
+spec:
+  resourceID: compute.googleapis.com
+---
+apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: Service
+metadata:
+  name: acme-platform-prod-container
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-platform-prod
+spec:
+  resourceID: container.googleapis.com
+---
+apiVersion: compute.cnrm.cloud.google.com/v1beta1
+kind: ComputeSharedVPCServiceProject
+metadata:
+  name: acme-platform-prod-service
+  namespace: config-connector
+spec:
+  projectRef:
+    name: acme-platform-prod
+  hostProjectRef:
+    name: acme-mgmt
+---
+

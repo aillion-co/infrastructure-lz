@@ -1,0 +1,46 @@
+apiVersion: run.cnrm.cloud.google.com/v1beta1
+kind: RunService
+metadata:
+  name: ai-proxy-litellm-proxy
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-ai-prod
+spec:
+  location: us-central1
+  template:
+    containers:
+      - image: ghcr.io/berriai/litellm:main-v1.35.0
+        ports:
+          - containerPort: 4000
+        env:
+          - name: LITELLM_MASTER_KEY
+            valueSource:
+              secretKeyRef:
+                secretRef:
+                  name: ai-proxy-litellm-master-key
+                versionRef:
+                  version: latest
+          - name: LITELLM_MODEL
+            value: vertex_ai/gemini-2.0-flash
+          - name: LITELLM_LOG
+            value: "true"
+        resources:
+          limits:
+            cpu: 4
+            memory: 2Gi
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 4000
+          initialDelaySeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 4000
+    scaling:
+      minInstanceCount: 0
+      maxInstanceCount: 10
+    serviceAccountName: ai-proxy-litellm@acme-ai-prod.iam.gserviceaccount.com
+  traffic:
+    - type: TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST
+      percent: 100

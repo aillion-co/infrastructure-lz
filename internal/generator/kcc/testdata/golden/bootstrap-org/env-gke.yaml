@@ -1,0 +1,82 @@
+
+apiVersion: container.cnrm.cloud.google.com/v1beta1
+kind: ContainerCluster
+metadata:
+  name: acme-platform-dev
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-platform-dev
+spec:
+  location: australia-southeast1
+  enableAutopilot: true
+  releaseChannel:
+    channel: REGULAR
+  networkRef:
+    name: acme-shared-vpc
+  subnetworkRef:
+    name: acme-shared-australia-southeast1
+  ipAllocationPolicy:
+    clusterSecondaryRangeName: pods
+    servicesSecondaryRangeName: services
+  privateClusterConfig:
+    enablePrivateNodes: true
+    enablePrivateEndpoint: false
+    masterIpv4CidrBlock: "172.16.0.0/28"
+  workloadIdentityConfig:
+    workloadPool: acme-platform-dev.svc.id.goog
+---
+
+apiVersion: container.cnrm.cloud.google.com/v1beta1
+kind: ContainerCluster
+metadata:
+  name: acme-platform-test
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-platform-test
+spec:
+  location: australia-southeast1
+  enableAutopilot: true
+  releaseChannel:
+    channel: REGULAR
+  networkRef:
+    name: acme-shared-vpc
+  subnetworkRef:
+    name: acme-shared-australia-southeast1
+  ipAllocationPolicy:
+    clusterSecondaryRangeName: pods
+    servicesSecondaryRangeName: services
+  privateClusterConfig:
+    enablePrivateNodes: true
+    enablePrivateEndpoint: false
+    masterIpv4CidrBlock: "172.16.0.0/28"
+  workloadIdentityConfig:
+    workloadPool: acme-platform-test.svc.id.goog
+---
+
+apiVersion: container.cnrm.cloud.google.com/v1beta1
+kind: ContainerCluster
+metadata:
+  name: acme-platform-prod
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-platform-prod
+spec:
+  location: australia-southeast1
+  enableAutopilot: true
+  releaseChannel:
+    channel: REGULAR
+  networkRef:
+    name: acme-shared-vpc
+  subnetworkRef:
+    name: acme-shared-australia-southeast1
+  ipAllocationPolicy:
+    clusterSecondaryRangeName: pods
+    servicesSecondaryRangeName: services
+  privateClusterConfig:
+    enablePrivateNodes: true
+    enablePrivateEndpoint: false
+    masterIpv4CidrBlock: "172.16.0.0/28"
+  workloadIdentityConfig:
+    workloadPool: acme-platform-prod.svc.id.goog
+---
+

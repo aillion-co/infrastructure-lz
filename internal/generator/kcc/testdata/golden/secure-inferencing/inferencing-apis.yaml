@@ -1,0 +1,29 @@
+apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: Service
+metadata:
+  name: acme-ai-prod-run
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-ai-prod
+spec:
+  resourceID: run.googleapis.com
+---
+apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: Service
+metadata:
+  name: acme-ai-prod-secretmanager
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-ai-prod
+spec:
+  resourceID: secretmanager.googleapis.com
+---
+apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: Service
+metadata:
+  name: acme-ai-prod-aiplatform
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-ai-prod
+spec:
+  resourceID: aiplatform.googleapis.com

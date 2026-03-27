@@ -1,0 +1,25 @@
+apiVersion: accesscontextmanager.cnrm.cloud.google.com/v1beta1
+kind: AccessContextManagerAccessPolicy
+metadata:
+  name: acme-access-policy
+  namespace: config-connector
+spec:
+  organizationRef:
+    external: 123456789012
+  title: acme Access Policy
+---
+apiVersion: accesscontextmanager.cnrm.cloud.google.com/v1beta1
+kind: AccessContextManagerServicePerimeter
+metadata:
+  name: acme-perimeter
+  namespace: config-connector
+spec:
+  accessPolicyRef:
+    name: acme-access-policy
+  title: acme Service Perimeter
+  perimeterType: PERIMETER_TYPE_REGULAR
+  status:
+    restrictedServices:
+      - storage.googleapis.com
+      - bigquery.googleapis.com
+      - compute.googleapis.com

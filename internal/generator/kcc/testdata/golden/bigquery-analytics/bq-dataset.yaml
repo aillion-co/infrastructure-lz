@@ -1,0 +1,22 @@
+apiVersion: bigquery.cnrm.cloud.google.com/v1beta1
+kind: BigQueryDataset
+metadata:
+  name: analytics-proj-customer_events
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-analytics-prod
+  labels:
+    managed-by: activations-accelerator
+    feature: bigquery-analytics
+spec:
+  friendlyName: analytics-proj Analytics Dataset
+  description: Customer event analytics dataset
+  location: us-central1
+  defaultTableExpirationMs: 7776000000
+  access:
+    - role: OWNER
+      specialGroup: projectOwners
+    - role: READER
+      specialGroup: projectReaders
+    - role: WRITER
+      specialGroup: projectWriters

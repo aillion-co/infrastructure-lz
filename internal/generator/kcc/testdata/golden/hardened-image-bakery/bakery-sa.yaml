@@ -1,0 +1,37 @@
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMServiceAccount
+metadata:
+  name: img-bakery-image-builder
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-images-prod
+spec:
+  displayName: Image Bakery Build Service Account
+---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicyMember
+metadata:
+  name: img-bakery-builder-compute-admin
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-images-prod
+spec:
+  member: serviceAccount:img-bakery-image-builder@acme-images-prod.iam.gserviceaccount.com
+  role: roles/compute.instanceAdmin.v1
+  resourceRef:
+    kind: Project
+    name: acme-images-prod
+---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicyMember
+metadata:
+  name: img-bakery-builder-storage-admin
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-images-prod
+spec:
+  member: serviceAccount:img-bakery-image-builder@acme-images-prod.iam.gserviceaccount.com
+  role: roles/storage.admin
+  resourceRef:
+    kind: Project
+    name: acme-images-prod

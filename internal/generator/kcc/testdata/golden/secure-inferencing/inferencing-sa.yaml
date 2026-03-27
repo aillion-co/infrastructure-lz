@@ -1,0 +1,37 @@
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMServiceAccount
+metadata:
+  name: ai-proxy-litellm
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-ai-prod
+spec:
+  displayName: LiteLLM Proxy Service Account
+---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicyMember
+metadata:
+  name: ai-proxy-litellm-secret-access
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-ai-prod
+spec:
+  member: serviceAccount:ai-proxy-litellm@acme-ai-prod.iam.gserviceaccount.com
+  role: roles/secretmanager.secretAccessor
+  resourceRef:
+    kind: Project
+    name: acme-ai-prod
+---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicyMember
+metadata:
+  name: ai-proxy-litellm-vertex-user
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-ai-prod
+spec:
+  member: serviceAccount:ai-proxy-litellm@acme-ai-prod.iam.gserviceaccount.com
+  role: roles/aiplatform.user
+  resourceRef:
+    kind: Project
+    name: acme-ai-prod

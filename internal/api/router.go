@@ -30,6 +30,11 @@ func NewRouter(gen *generator.Generator, activationGen *generator.ActivationGene
 	activateHandler := handlers.NewActivateHandler(activationGen)
 	mux.Handle("POST /api/v1/activate", activateHandler)
 	mux.HandleFunc("GET /api/v1/features", handlers.FeaturesHandler)
+	mux.HandleFunc("POST /api/v1/cost-estimate", handlers.CostEstimateHandler)
+
+	// Discovery API
+	mux.HandleFunc("POST /api/v1/discovery/evaluate", handlers.HandleDiscoveryEvaluate())
+	mux.HandleFunc("GET /api/v1/discovery/sections", handlers.HandleDiscoverySections())
 
 	// Web UI
 	webHandler := web.NewHandler()

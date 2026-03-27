@@ -1,0 +1,19 @@
+apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: Service
+metadata:
+  name: acme-analytics-prod-bigquery
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-analytics-prod
+spec:
+  resourceID: bigquery.googleapis.com
+---
+apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: Service
+metadata:
+  name: acme-analytics-prod-bigquerydatatransfer
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-analytics-prod
+spec:
+  resourceID: bigquerydatatransfer.googleapis.com

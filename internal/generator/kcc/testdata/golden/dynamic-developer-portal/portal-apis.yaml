@@ -1,0 +1,29 @@
+apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: Service
+metadata:
+  name: acme-devportal-prod-krmapihosting
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-devportal-prod
+spec:
+  resourceID: krmapihosting.googleapis.com
+---
+apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: Service
+metadata:
+  name: acme-devportal-prod-container
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-devportal-prod
+spec:
+  resourceID: container.googleapis.com
+---
+apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: Service
+metadata:
+  name: acme-devportal-prod-anthos
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-devportal-prod
+spec:
+  resourceID: anthos.googleapis.com

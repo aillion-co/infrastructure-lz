@@ -1,0 +1,32 @@
+apiVersion: sql.cnrm.cloud.google.com/v1beta1
+kind: SQLInstance
+metadata:
+  name: myapp-db
+  namespace: config-connector
+spec:
+  databaseVersion: POSTGRES_15
+  region: us-central1
+  settings:
+    tier: db-custom-2-8192
+    availabilityType: REGIONAL
+    ipConfiguration:
+      ipv4Enabled: false
+      requireSsl: true
+    backupConfiguration:
+      enabled: true
+      startTime: "03:00"
+      pointInTimeRecoveryEnabled: true
+    maintenanceWindow:
+      day: 7
+      hour: 3
+---
+apiVersion: sql.cnrm.cloud.google.com/v1beta1
+kind: SQLDatabase
+metadata:
+  name: myapp-db-primary
+  namespace: config-connector
+spec:
+  instanceRef:
+    name: myapp-db
+  charset: UTF8
+  collation: en_US.UTF8
