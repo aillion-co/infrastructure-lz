@@ -1,129 +1,127 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="corporate">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Activations Accelerator</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" type="text/css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     <link rel="stylesheet" href="/static/wizard.css">
 </head>
-<body>
-    <header class="container">
-        <nav>
-            <ul>
-                <li><strong>Activations Accelerator</strong></li>
-            </ul>
-            <ul>
-                <li><a href="/activate" class="contrast">New Activation</a></li>
-            </ul>
-        </nav>
+<body class="min-h-screen bg-base-200">
+    <header class="navbar bg-base-100 border-b border-base-300 shadow-sm">
+        <div class="container mx-auto max-w-5xl flex items-center justify-between px-4">
+            <a href="/activate" class="text-lg font-semibold">Activations Accelerator</a>
+            <a href="/activate" class="btn btn-ghost btn-sm">New Activation</a>
+        </div>
     </header>
 
-    <main class="container">
-        <article>
-            <header>
-                <hgroup>
-                    <h2>New Activation</h2>
-                    <p>Configure your GCP Landing Zone and download Helm charts with Config Connector resources.</p>
-                </hgroup>
-                <div id="wizard-progress">
-                    <progress id="step-progress" value="0" max="5"></progress>
-                    <small id="step-label">Step 1 of 6: Customer Details</small>
+    <main class="container mx-auto max-w-5xl px-4 py-8">
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body space-y-6">
+                <div class="space-y-2">
+                    <h2 class="card-title text-2xl">New Activation</h2>
+                    <p class="text-base-content/70">Configure your GCP Landing Zone and download Helm charts with Config Connector resources.</p>
+                    <div class="pt-2">
+                        <progress id="step-progress" class="progress progress-primary w-full" value="0" max="5"></progress>
+                        <p id="step-label" class="text-sm text-base-content/60 mt-1">Step 1 of 6: Customer Details</p>
+                    </div>
                 </div>
-            </header>
 
-            <!-- Step 0: Customer Details -->
-            <section class="wizard-step" id="step-0" data-step="0">
-                <h3>Customer Details</h3>
-                <div class="grid">
-                    <label>
-                        Customer Name <span class="required">*</span>
-                        <input type="text" id="customerName" required placeholder="acme-corp"
-                               pattern="^[a-z][a-z0-9-]{2,30}$">
-                        <small>Lowercase letters, numbers, hyphens. 3-31 chars.</small>
+                <!-- Step 0: Customer Details -->
+                <section class="wizard-step space-y-4" id="step-0" data-step="0">
+                    <h3 class="text-lg font-semibold">Customer Details</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <label class="form-control">
+                            <div class="label"><span class="label-text">Customer Name <span class="text-error">*</span></span></div>
+                            <input type="text" id="customerName" required placeholder="acme-corp"
+                                   pattern="^[a-z][a-z0-9-]{2,30}$"
+                                   class="input input-bordered w-full">
+                            <div class="label"><span class="label-text-alt">Lowercase letters, numbers, hyphens. 3-31 chars.</span></div>
+                        </label>
+                        <label class="form-control">
+                            <div class="label"><span class="label-text">Contact Email <span class="text-error">*</span></span></div>
+                            <input type="email" id="contactEmail" required placeholder="admin@example.com"
+                                   class="input input-bordered w-full">
+                        </label>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <label class="form-control">
+                            <div class="label"><span class="label-text">Contact Name</span></div>
+                            <input type="text" id="contactName" placeholder="Jane Smith"
+                                   class="input input-bordered w-full">
+                        </label>
+                        <label class="form-control">
+                            <div class="label"><span class="label-text">Industry</span></div>
+                            <select id="industry" class="select select-bordered w-full">
+                                <option value="">Select industry...</option>
+                                <option value="financial-services">Financial Services</option>
+                                <option value="public-sector">Public Sector</option>
+                                <option value="healthcare">Healthcare</option>
+                                <option value="retail">Retail</option>
+                                <option value="manufacturing">Manufacturing</option>
+                                <option value="media">Media &amp; Entertainment</option>
+                                <option value="logistics">Logistics</option>
+                                <option value="security">Security</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </label>
+                    </div>
+                    <label class="form-control">
+                        <div class="label"><span class="label-text">Notes</span></div>
+                        <textarea id="notes" placeholder="Additional context about the engagement..."
+                                  class="textarea textarea-bordered w-full" rows="3"></textarea>
                     </label>
-                    <label>
-                        Contact Email <span class="required">*</span>
-                        <input type="email" id="contactEmail" required placeholder="admin@example.com">
-                    </label>
+                </section>
+
+                <!-- Step 1: Discovery (optional) -->
+                <section class="wizard-step space-y-4" id="step-1" data-step="1" style="display:none;">
+                    <div class="space-y-1">
+                        <h3 class="text-lg font-semibold">Discovery</h3>
+                        <p class="text-base-content/70">Tell us about your environment so we can recommend the right features. All fields are optional &mdash; feel free to skip.</p>
+                    </div>
+                    <div id="discovery-form">
+                        <div class="flex items-center gap-2 text-base-content/60"><span class="loading loading-spinner loading-sm"></span>Loading questionnaire&hellip;</div>
+                    </div>
+                    <button type="button" class="btn btn-ghost btn-sm" onclick="skipDiscovery()">Skip discovery</button>
+                </section>
+
+                <!-- Step 2: Feature Selection -->
+                <section class="wizard-step space-y-4" id="step-2" data-step="2" style="display:none;">
+                    <h3 class="text-lg font-semibold">Select Features</h3>
+                    <p class="text-base-content/70">Choose the infrastructure components to include in your activation.</p>
+                    <div id="recommended-banner" class="hidden"></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="feature-grid"></div>
+                </section>
+
+                <!-- Step 3: Feature Configuration -->
+                <section class="wizard-step space-y-4" id="step-3" data-step="3" style="display:none;">
+                    <h3 class="text-lg font-semibold">Configure Features</h3>
+                    <div id="feature-configs" class="space-y-3"></div>
+                </section>
+
+                <!-- Step 4: Review -->
+                <section class="wizard-step space-y-4" id="step-4" data-step="4" style="display:none;">
+                    <h3 class="text-lg font-semibold">Review</h3>
+                    <div id="review-summary" class="space-y-4"></div>
+                    <div id="cost-summary">
+                        <div class="flex items-center gap-2 text-base-content/60"><span class="loading loading-spinner loading-sm"></span>Calculating cost estimates&hellip;</div>
+                    </div>
+                </section>
+
+                <!-- Step 5: Result -->
+                <section class="wizard-step space-y-4" id="step-5" data-step="5" style="display:none;">
+                    <h3 class="text-lg font-semibold">Activation Complete</h3>
+                    <div id="result-panel" class="space-y-3"></div>
+                </section>
+
+                <div class="card-actions justify-between pt-4 border-t border-base-300">
+                    <button id="btn-back" class="btn btn-ghost" onclick="prevStep()" style="display:none;">Back</button>
+                    <button id="btn-next" class="btn btn-primary" onclick="nextStep()">Continue</button>
                 </div>
-                <div class="grid">
-                    <label>
-                        Contact Name
-                        <input type="text" id="contactName" placeholder="Jane Smith">
-                    </label>
-                    <label>
-                        Industry
-                        <select id="industry">
-                            <option value="">Select industry...</option>
-                            <option value="financial-services">Financial Services</option>
-                            <option value="public-sector">Public Sector</option>
-                            <option value="healthcare">Healthcare</option>
-                            <option value="retail">Retail</option>
-                            <option value="manufacturing">Manufacturing</option>
-                            <option value="media">Media & Entertainment</option>
-                            <option value="logistics">Logistics</option>
-                            <option value="security">Security</option>
-                            <option value="other">Other</option>
-                        </select>
-                    </label>
-                </div>
-                <label>
-                    Notes
-                    <textarea id="notes" placeholder="Additional context about the engagement..."></textarea>
-                </label>
-            </section>
-
-            <!-- Step 1: Discovery (optional) -->
-            <section class="wizard-step" id="step-1" data-step="1" style="display:none;">
-                <hgroup>
-                    <h3>Discovery</h3>
-                    <p>Tell us about your environment so we can recommend the right features. All fields are optional &mdash; feel free to skip.</p>
-                </hgroup>
-                <div id="discovery-form"><p aria-busy="true">Loading questionnaire&hellip;</p></div>
-                <p>
-                    <button type="button" class="secondary outline" onclick="skipDiscovery()">Skip discovery</button>
-                </p>
-            </section>
-
-            <!-- Step 2: Feature Selection -->
-            <section class="wizard-step" id="step-2" data-step="2" style="display:none;">
-                <h3>Select Features</h3>
-                <p>Choose the infrastructure components to include in your activation.</p>
-                <div id="recommended-banner" style="display:none;"></div>
-                <div class="grid" id="feature-grid"></div>
-            </section>
-
-            <!-- Step 3: Feature Configuration -->
-            <section class="wizard-step" id="step-3" data-step="3" style="display:none;">
-                <h3>Configure Features</h3>
-                <div id="feature-configs"></div>
-            </section>
-
-            <!-- Step 4: Review -->
-            <section class="wizard-step" id="step-4" data-step="4" style="display:none;">
-                <h3>Review</h3>
-                <div id="review-summary"></div>
-                <div id="cost-summary"><p aria-busy="true">Calculating cost estimates&hellip;</p></div>
-            </section>
-
-            <!-- Step 5: Result -->
-            <section class="wizard-step" id="step-5" data-step="5" style="display:none;">
-                <h3>Activation Complete</h3>
-                <div id="result-panel"></div>
-            </section>
-
-            <footer>
-                <div class="grid">
-                    <button id="btn-back" class="secondary outline" onclick="prevStep()" style="display:none;">Back</button>
-                    <div></div>
-                    <button id="btn-next" onclick="nextStep()">Continue</button>
-                </div>
-            </footer>
-        </article>
+            </div>
+        </div>
     </main>
 
     <script>
@@ -172,9 +170,9 @@
         container.innerHTML = discoverySections.map(section => `
             <div class="collapse collapse-arrow bg-base-200 mb-2 discovery-section">
                 <input type="checkbox" checked />
-                <div class="collapse-title text-lg font-semibold">${section.title}</div>
-                <div class="collapse-content">
-                    <p class="text-sm opacity-70 mb-2">${section.description}</p>
+                <div class="collapse-title text-base font-semibold">${section.title}</div>
+                <div class="collapse-content space-y-3">
+                    <p class="text-sm text-base-content/60">${section.description}</p>
                     ${section.fields.map(f => renderDiscoveryField(section.key, f)).join('')}
                 </div>
             </div>
@@ -184,26 +182,40 @@
     function renderDiscoveryField(sectionKey, field) {
         const id = `disc-${sectionKey}-${field.key}`;
         const dataAttrs = `data-section="${sectionKey}" data-field="${field.key}" data-type="${field.type}" class="disc"`;
+        const required = field.required ? ' <span class="text-error">*</span>' : '';
         switch (field.type) {
             case 'text':
-                return `<label>${field.label}${field.required ? ' <span class="required">*</span>' : ''}
-                    <input type="text" id="${id}" ${dataAttrs}></label>`;
+                return `<label class="form-control">
+                    <div class="label"><span class="label-text">${field.label}${required}</span></div>
+                    <input type="text" id="${id}" ${dataAttrs.replace('class="disc"', 'class="disc input input-bordered input-sm w-full"')}>
+                </label>`;
             case 'select':
-                return `<label>${field.label}
-                    <select id="${id}" ${dataAttrs}>
+                return `<label class="form-control">
+                    <div class="label"><span class="label-text">${field.label}</span></div>
+                    <select id="${id}" ${dataAttrs.replace('class="disc"', 'class="disc select select-bordered select-sm w-full"')}>
                         <option value="">Select&hellip;</option>
                         ${(field.options || []).map(o => `<option value="${o.value}">${o.label}</option>`).join('')}
-                    </select></label>`;
+                    </select>
+                </label>`;
             case 'boolean':
-                return `<label><input type="checkbox" id="${id}" ${dataAttrs}> ${field.label}</label>`;
+                return `<label class="label cursor-pointer justify-start gap-3">
+                    <input type="checkbox" id="${id}" ${dataAttrs.replace('class="disc"', 'class="disc checkbox checkbox-primary"')}>
+                    <span class="label-text">${field.label}</span>
+                </label>`;
             case 'multiselect':
-                return `<fieldset><legend>${field.label}</legend>
-                    ${(field.options || []).map((o, i) => `
-                        <label><input type="checkbox" id="${id}-${i}"
-                            data-section="${sectionKey}" data-field="${field.key}" data-type="multiselect"
-                            data-value="${o.value}" class="disc"> ${o.label}</label>
-                    `).join('')}
-                </fieldset>`;
+                return `<div class="form-control">
+                    <div class="label"><span class="label-text font-semibold">${field.label}</span></div>
+                    <div class="flex flex-wrap gap-3">
+                        ${(field.options || []).map((o, i) => `
+                            <label class="label cursor-pointer justify-start gap-2 py-1">
+                                <input type="checkbox" id="${id}-${i}"
+                                    data-section="${sectionKey}" data-field="${field.key}" data-type="multiselect"
+                                    data-value="${o.value}" class="disc checkbox checkbox-sm checkbox-primary">
+                                <span class="label-text">${o.label}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>`;
             default:
                 return '';
         }
@@ -276,15 +288,15 @@
         const banner = document.getElementById('recommended-banner');
         const recommended = Object.values(discoveryRecommendations).filter(r => r.recommended);
         if (recommended.length === 0) {
-            banner.style.display = 'none';
+            banner.classList.add('hidden');
             return;
         }
-        banner.style.display = 'block';
+        banner.classList.remove('hidden');
         banner.innerHTML = `
-            <div role="alert" class="alert alert-info recommended-banner">
+            <div role="alert" class="alert alert-info">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 <div>
-                    <h4 class="font-bold">We recommend ${recommended.length} feature${recommended.length === 1 ? '' : 's'} based on your discovery answers.</h4>
+                    <div class="font-semibold">We recommend ${recommended.length} feature${recommended.length === 1 ? '' : 's'} based on your discovery answers.</div>
                     <div class="text-xs">Recommended features are pre-selected and badged below. You can adjust the selection.</div>
                 </div>
             </div>
@@ -297,53 +309,66 @@
             const isSelected = selectedFeatures.has(f.id);
             const rec = discoveryRecommendations[f.id];
             const isRecommended = rec && rec.recommended;
+            const isDisabled = f.maturity === 'stub';
+            const borderClass = isSelected
+                ? 'border-primary shadow-primary/30 shadow-lg'
+                : isRecommended
+                ? 'border-success'
+                : 'border-base-300';
+            const disabledClass = isDisabled ? 'opacity-50 pointer-events-none' : 'cursor-pointer hover:border-primary';
+            const maturityBadge = {
+                ga: 'badge-success',
+                beta: 'badge-warning',
+                alpha: 'badge-info',
+                stub: 'badge-ghost',
+            }[f.maturity] || 'badge-ghost';
             return `
-            <article class="feature-card ${f.maturity === 'stub' ? 'disabled' : ''} ${isSelected ? 'selected' : ''} ${isRecommended ? 'recommended' : ''}"
-                     id="feature-${f.id}" onclick="toggleFeature('${f.id}', this)">
-                <header>
-                    <hgroup>
-                        <h4>${f.name}</h4>
-                        <p>
-                            <kbd>${f.maturity.toUpperCase()}</kbd> &middot; ${f.category}
-                            ${isRecommended ? '<span class="badge badge-success badge-sm rec-badge">RECOMMENDED</span>' : ''}
-                        </p>
-                    </hgroup>
-                </header>
-                <p>${f.description}</p>
-                ${isRecommended ? `<p><small><em>${rec.reason}</em></small></p>` : ''}
-                <footer>
-                    <label>
-                        <input type="checkbox" id="check-${f.id}" ${f.maturity === 'stub' ? 'disabled' : ''} ${isSelected ? 'checked' : ''}
-                               onchange="event.stopPropagation()">
-                        Select
-                    </label>
-                </footer>
-            </article>
+            <div class="feature-card card bg-base-100 border-2 ${borderClass} ${disabledClass} transition-colors"
+                 id="feature-${f.id}" onclick="toggleFeature('${f.id}', this)">
+                <div class="card-body p-4 space-y-2">
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <h4 class="card-title text-base">${f.name}</h4>
+                            <div class="flex items-center gap-2 flex-wrap mt-1">
+                                <span class="badge ${maturityBadge} badge-sm">${f.maturity.toUpperCase()}</span>
+                                <span class="text-xs text-base-content/60">${f.category}</span>
+                                ${isRecommended ? '<span class="badge badge-success badge-sm">RECOMMENDED</span>' : ''}
+                            </div>
+                        </div>
+                        <input type="checkbox" id="check-${f.id}" ${isDisabled ? 'disabled' : ''} ${isSelected ? 'checked' : ''}
+                               class="checkbox checkbox-primary mt-1"
+                               onclick="event.stopPropagation()"
+                               onchange="toggleFeature('${f.id}', document.getElementById('feature-${f.id}'), true)">
+                    </div>
+                    <p class="text-sm text-base-content/80">${f.description}</p>
+                    ${isRecommended ? `<p class="text-xs italic text-base-content/60">${rec.reason}</p>` : ''}
+                </div>
+            </div>
         `;
         }).join('');
     }
 
-    function toggleFeature(id, el) {
+    function toggleFeature(id, el, fromCheckbox) {
         const f = features.find(x => x.id === id);
-        if (f.maturity === 'stub') return;
+        if (!f || f.maturity === 'stub') return;
         const cb = document.getElementById('check-' + id);
-        cb.checked = !cb.checked;
-        el.classList.toggle('selected', cb.checked);
+        if (!fromCheckbox) {
+            cb.checked = !cb.checked;
+        }
         if (cb.checked) {
             selectedFeatures.add(id);
-            // Auto-select dependencies
             if (f.dependsOn) {
                 f.dependsOn.forEach(dep => {
                     selectedFeatures.add(dep);
                     const depCb = document.getElementById('check-' + dep);
                     if (depCb) { depCb.checked = true; }
-                    const depCard = document.getElementById('feature-' + dep);
-                    if (depCard) { depCard.classList.add('selected'); }
                 });
             }
         } else {
             selectedFeatures.delete(id);
         }
+        // Re-render to reflect selection + dependency styling.
+        renderFeatureGrid();
     }
 
     function renderFeatureConfigs() {
@@ -351,161 +376,215 @@
         let html = '';
         selectedFeatures.forEach(fid => {
             const f = features.find(x => x.id === fid);
-            html += `<details open><summary><strong>${f.name}</strong></summary>`;
-            html += getConfigFields(fid);
-            html += `</details>`;
+            html += `
+                <div class="collapse collapse-arrow bg-base-200 border border-base-300">
+                    <input type="checkbox" checked />
+                    <div class="collapse-title font-semibold">${f.name}</div>
+                    <div class="collapse-content space-y-4">
+                        ${getConfigFields(fid)}
+                    </div>
+                </div>
+            `;
         });
         container.innerHTML = html;
     }
 
+    // --- DaisyUI form-control builders ---
+    // These helpers emit the same data-feature / data-field / class="cfg"
+    // attributes the payload collector looks for, wrapped in DaisyUI markup.
+
+    function textField(feature, field, label, opts = {}) {
+        const placeholder = opts.placeholder ? ` placeholder="${opts.placeholder}"` : '';
+        const value = opts.value ? ` value="${opts.value}"` : '';
+        const pattern = opts.pattern ? ` pattern="${opts.pattern}"` : '';
+        return `
+            <label class="form-control">
+                <div class="label"><span class="label-text">${label}</span></div>
+                <input type="text" data-feature="${feature}" data-field="${field}"
+                       class="cfg input input-bordered w-full"${placeholder}${value}${pattern}>
+            </label>`;
+    }
+
+    function selectField(feature, field, label, options) {
+        const opts = options.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
+        return `
+            <label class="form-control">
+                <div class="label"><span class="label-text">${label}</span></div>
+                <select data-feature="${feature}" data-field="${field}"
+                        class="cfg select select-bordered w-full">
+                    ${opts}
+                </select>
+            </label>`;
+    }
+
+    function checkboxField(feature, field, label, opts = {}) {
+        const checked = opts.checked ? ' checked' : '';
+        const hint = opts.hint ? `<span class="label-text-alt text-base-content/60 block mt-1">${opts.hint}</span>` : '';
+        return `
+            <label class="label cursor-pointer justify-start gap-3 py-1">
+                <input type="checkbox" data-feature="${feature}" data-field="${field}"
+                       class="cfg checkbox checkbox-primary"${checked}>
+                <span class="label-text">${label}${hint}</span>
+            </label>`;
+    }
+
+    function row(...fields) {
+        return `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${fields.join('')}</div>`;
+    }
+
+    function checkboxGroup(title, ...checkboxes) {
+        const header = title ? `<div class="text-sm font-semibold text-base-content/80">${title}</div>` : '';
+        return `
+            <div class="form-control border border-base-300 rounded-lg p-3 space-y-1">
+                ${header}
+                ${checkboxes.join('')}
+            </div>`;
+    }
+
     function getConfigFields(featureId) {
+        const f = featureId;
         const configs = {
-            'bootstrap-org': `
-                <div class="grid">
-                    <label>Customer Name <input type="text" data-feature="bootstrap-org" data-field="customerName" class="cfg"></label>
-                    <label>Workload Name <input type="text" data-feature="bootstrap-org" data-field="workloadName" class="cfg" placeholder="web"></label>
-                </div>
-                <div class="grid">
-                    <label>Root Level
-                        <select data-feature="bootstrap-org" data-field="rootLevel" class="cfg">
-                            <option value="organization">Organisation</option>
-                            <option value="folder">Folder</option>
-                        </select>
-                    </label>
-                    <label>Root ID <input type="text" data-feature="bootstrap-org" data-field="rootId" class="cfg" placeholder="123456789"></label>
-                </div>
-                <div class="grid">
-                    <label>Billing Account <input type="text" data-feature="bootstrap-org" data-field="billingAccount" class="cfg" placeholder="AAAAAA-BBBBBB-CCCCCC"></label>
-                    <label>Region
-                        <select data-feature="bootstrap-org" data-field="region" class="cfg">
-                            <option value="europe-west2">europe-west2</option>
-                            <option value="us-central1">us-central1</option>
-                            <option value="europe-west1">europe-west1</option>
-                            <option value="asia-southeast1">asia-southeast1</option>
-                        </select>
-                    </label>
-                </div>
-                <div class="grid">
-                    <label>Environments <input type="text" data-feature="bootstrap-org" data-field="envs" class="cfg" value="dev,test,prod"></label>
-                    <label>VCS
-                        <select data-feature="bootstrap-org" data-field="vcs" class="cfg">
-                            <option value="github">GitHub</option>
-                            <option value="gitlab">GitLab</option>
-                            <option value="bitbucket">Bitbucket</option>
-                            <option value="none">None</option>
-                        </select>
-                    </label>
-                </div>
-                <fieldset>
-                    <label><input type="checkbox" data-feature="bootstrap-org" data-field="orgPolicies" class="cfg"> Enable Org Policies</label>
-                    <label><input type="checkbox" data-feature="bootstrap-org" data-field="vpcSc" class="cfg"> VPC Service Controls</label>
-                    <label><input type="checkbox" data-feature="bootstrap-org" data-field="sharedVpc" class="cfg"> Shared VPC</label>
-                    <label><input type="checkbox" data-feature="bootstrap-org" data-field="serviceProjects" class="cfg"> Attach workload projects as Shared VPC service projects <small>(requires Shared VPC)</small></label>
-                    <label><input type="checkbox" data-feature="bootstrap-org" data-field="gkeCluster" class="cfg"> GKE Clusters per Environment</label>
-                    <label><input type="checkbox" data-feature="bootstrap-org" data-field="envFolders" class="cfg"> Environment Folders</label>
-                    <label><input type="checkbox" data-feature="bootstrap-org" data-field="cmek" class="cfg"> Customer-Managed Encryption Keys (CMEK) <small>(provisions a KMS key ring in the management project and attaches it to every encryptable resource across all selected features)</small></label>
-                </fieldset>`,
-            'bigquery-analytics': `
-                <div class="grid">
-                    <label>Project Name <input type="text" data-feature="bigquery-analytics" data-field="projectName" class="cfg"></label>
-                    <label>Project ID <input type="text" data-feature="bigquery-analytics" data-field="projectId" class="cfg"></label>
-                </div>
-                <div class="grid">
-                    <label>Region <input type="text" data-feature="bigquery-analytics" data-field="region" class="cfg" value="europe-west2"></label>
-                    <label>Dataset ID <input type="text" data-feature="bigquery-analytics" data-field="datasetId" class="cfg" value="analytics"></label>
-                </div>
-                <fieldset>
-                    <label><input type="checkbox" data-feature="bigquery-analytics" data-field="enableDataTransfer" class="cfg"> Provision a BigQuery Data Transfer service</label>
-                </fieldset>`,
-            'dynamic-developer-portal': `
-                <div class="grid">
-                    <label>Project Name <input type="text" data-feature="dynamic-developer-portal" data-field="projectName" class="cfg"></label>
-                    <label>GCP Project ID <input type="text" data-feature="dynamic-developer-portal" data-field="gcpProjectId" class="cfg"></label>
-                </div>
-                <div class="grid">
-                    <label>GCP Region <input type="text" data-feature="dynamic-developer-portal" data-field="gcpRegion" class="cfg" value="europe-west2"></label>
-                    <label>Git Repo SSH URL <input type="text" data-feature="dynamic-developer-portal" data-field="gitRepoSshUrl" class="cfg" placeholder="git@github.com:org/config.git"></label>
-                </div>`,
-            'hardened-image-bakery': `
-                <div class="grid">
-                    <label>Project Name <input type="text" data-feature="hardened-image-bakery" data-field="projectName" class="cfg"></label>
-                    <label>Project ID <input type="text" data-feature="hardened-image-bakery" data-field="projectId" class="cfg"></label>
-                </div>
-                <div class="grid">
-                    <label>Region <input type="text" data-feature="hardened-image-bakery" data-field="region" class="cfg" value="europe-west2"></label>
-                    <label>Zone <input type="text" data-feature="hardened-image-bakery" data-field="zone" class="cfg" value="europe-west2-a"></label>
-                </div>`,
-            'secure-inferencing': `
-                <div class="grid">
-                    <label>Project Name <input type="text" data-feature="secure-inferencing" data-field="projectName" class="cfg"></label>
-                    <label>Project ID <input type="text" data-feature="secure-inferencing" data-field="projectId" class="cfg"></label>
-                </div>
-                <div class="grid">
-                    <label>Region <input type="text" data-feature="secure-inferencing" data-field="region" class="cfg" value="europe-west2"></label>
-                    <label>Gemini Model <input type="text" data-feature="secure-inferencing" data-field="geminiModel" class="cfg" value="gemini-2.0-flash"></label>
-                </div>
-                <fieldset>
-                    <label><input type="checkbox" data-feature="secure-inferencing" data-field="enableGemini" class="cfg" checked> Enable Gemini</label>
-                    <label><input type="checkbox" data-feature="secure-inferencing" data-field="enableAuditLogging" class="cfg" checked> Audit Logging</label>
-                </fieldset>`,
-            'skaffold-application-development': `
-                <div class="grid">
-                    <label>Project Name <input type="text" data-feature="skaffold-application-development" data-field="projectName" class="cfg"></label>
-                    <label>Service Name <input type="text" data-feature="skaffold-application-development" data-field="serviceName" class="cfg"></label>
-                </div>
-                <div class="grid">
-                    <label>Region <input type="text" data-feature="skaffold-application-development" data-field="region" class="cfg" value="us-central1"></label>
-                </div>
-                <div class="grid">
-                    <label>Cluster Type
-                        <select data-feature="skaffold-application-development" data-field="clusterType" class="cfg">
-                            <option value="autopilot">Autopilot</option>
-                            <option value="standard">Standard</option>
-                        </select>
-                    </label>
-                    <label>Machine Type
-                        <select data-feature="skaffold-application-development" data-field="machineType" class="cfg">
-                            <option value="e2-standard-4">e2-standard-4</option>
-                            <option value="e2-standard-8">e2-standard-8</option>
-                            <option value="n2-standard-4">n2-standard-4</option>
-                            <option value="n2-standard-8">n2-standard-8</option>
-                        </select>
-                    </label>
-                </div>
-                <div class="grid">
-                    <label>Release Channel
-                        <select data-feature="skaffold-application-development" data-field="releaseChannel" class="cfg">
-                            <option value="REGULAR">Regular</option>
-                            <option value="STABLE">Stable</option>
-                            <option value="RAPID">Rapid</option>
-                        </select>
-                    </label>
-                    <label>SQL Database
-                        <select data-feature="skaffold-application-development" data-field="sqlDb" class="cfg">
-                            <option value="no">No</option>
-                            <option value="yes">Yes (PostgreSQL)</option>
-                        </select>
-                    </label>
-                </div>
-                <div class="grid">
-                    <label>Public Ingress
-                        <select data-feature="skaffold-application-development" data-field="allowIngress" class="cfg">
-                            <option value="no">No</option>
-                            <option value="yes">Yes (external HTTP load balancer)</option>
-                        </select>
-                    </label>
-                </div>
-                <fieldset>
-                    <label><input type="checkbox" data-feature="skaffold-application-development" data-field="enableAutoscaling" class="cfg"> Enable cluster autoscaling</label>
-                    <label><input type="checkbox" data-feature="skaffold-application-development" data-field="spotVms" class="cfg"> Use Spot VMs for node pools</label>
-                </fieldset>`
+            'bootstrap-org': [
+                row(
+                    textField(f, 'customerName', 'Customer Name'),
+                    textField(f, 'workloadName', 'Workload Name', { placeholder: 'web' }),
+                ),
+                row(
+                    selectField(f, 'rootLevel', 'Root Level', [
+                        { value: 'organization', label: 'Organisation' },
+                        { value: 'folder', label: 'Folder' },
+                    ]),
+                    textField(f, 'rootId', 'Root ID', { placeholder: '123456789' }),
+                ),
+                row(
+                    textField(f, 'billingAccount', 'Billing Account', { placeholder: 'AAAAAA-BBBBBB-CCCCCC' }),
+                    selectField(f, 'region', 'Region', [
+                        { value: 'europe-west2', label: 'europe-west2' },
+                        { value: 'us-central1', label: 'us-central1' },
+                        { value: 'europe-west1', label: 'europe-west1' },
+                        { value: 'asia-southeast1', label: 'asia-southeast1' },
+                    ]),
+                ),
+                row(
+                    textField(f, 'envs', 'Environments', { value: 'dev,test,prod' }),
+                    selectField(f, 'vcs', 'VCS', [
+                        { value: 'github', label: 'GitHub' },
+                        { value: 'gitlab', label: 'GitLab' },
+                        { value: 'bitbucket', label: 'Bitbucket' },
+                        { value: 'none', label: 'None' },
+                    ]),
+                ),
+                checkboxGroup('Options',
+                    checkboxField(f, 'orgPolicies', 'Enable Org Policies'),
+                    checkboxField(f, 'vpcSc', 'VPC Service Controls'),
+                    checkboxField(f, 'sharedVpc', 'Shared VPC'),
+                    checkboxField(f, 'serviceProjects', 'Attach workload projects as Shared VPC service projects', { hint: 'Requires Shared VPC.' }),
+                    checkboxField(f, 'gkeCluster', 'GKE Clusters per Environment'),
+                    checkboxField(f, 'envFolders', 'Environment Folders'),
+                    checkboxField(f, 'cmek', 'Customer-Managed Encryption Keys (CMEK)', {
+                        hint: 'Provisions a KMS key ring in the management project and attaches it to every encryptable resource across all selected features.',
+                    }),
+                ),
+            ].join(''),
+
+            'bigquery-analytics': [
+                row(
+                    textField(f, 'projectName', 'Project Name'),
+                    textField(f, 'projectId', 'Project ID'),
+                ),
+                row(
+                    textField(f, 'region', 'Region', { value: 'europe-west2' }),
+                    textField(f, 'datasetId', 'Dataset ID', { value: 'analytics' }),
+                ),
+                checkboxGroup('Options',
+                    checkboxField(f, 'enableDataTransfer', 'Provision a BigQuery Data Transfer service'),
+                ),
+            ].join(''),
+
+            'dynamic-developer-portal': [
+                row(
+                    textField(f, 'projectName', 'Project Name'),
+                    textField(f, 'gcpProjectId', 'GCP Project ID'),
+                ),
+                row(
+                    textField(f, 'gcpRegion', 'GCP Region', { value: 'europe-west2' }),
+                    textField(f, 'gitRepoSshUrl', 'Git Repo SSH URL', { placeholder: 'git@github.com:org/config.git' }),
+                ),
+            ].join(''),
+
+            'hardened-image-bakery': [
+                row(
+                    textField(f, 'projectName', 'Project Name'),
+                    textField(f, 'projectId', 'Project ID'),
+                ),
+                row(
+                    textField(f, 'region', 'Region', { value: 'europe-west2' }),
+                    textField(f, 'zone', 'Zone', { value: 'europe-west2-a' }),
+                ),
+            ].join(''),
+
+            'secure-inferencing': [
+                row(
+                    textField(f, 'projectName', 'Project Name'),
+                    textField(f, 'projectId', 'Project ID'),
+                ),
+                row(
+                    textField(f, 'region', 'Region', { value: 'europe-west2' }),
+                    textField(f, 'geminiModel', 'Gemini Model', { value: 'gemini-2.0-flash' }),
+                ),
+                checkboxGroup('Options',
+                    checkboxField(f, 'enableGemini', 'Enable Gemini', { checked: true }),
+                    checkboxField(f, 'enableAuditLogging', 'Audit Logging', { checked: true }),
+                ),
+            ].join(''),
+
+            'skaffold-application-development': [
+                row(
+                    textField(f, 'projectName', 'Project Name'),
+                    textField(f, 'serviceName', 'Service Name'),
+                ),
+                row(
+                    textField(f, 'region', 'Region', { value: 'us-central1' }),
+                    selectField(f, 'clusterType', 'Cluster Type', [
+                        { value: 'autopilot', label: 'Autopilot' },
+                        { value: 'standard', label: 'Standard' },
+                    ]),
+                ),
+                row(
+                    selectField(f, 'machineType', 'Machine Type', [
+                        { value: 'e2-standard-4', label: 'e2-standard-4' },
+                        { value: 'e2-standard-8', label: 'e2-standard-8' },
+                        { value: 'n2-standard-4', label: 'n2-standard-4' },
+                        { value: 'n2-standard-8', label: 'n2-standard-8' },
+                    ]),
+                    selectField(f, 'releaseChannel', 'Release Channel', [
+                        { value: 'REGULAR', label: 'Regular' },
+                        { value: 'STABLE', label: 'Stable' },
+                        { value: 'RAPID', label: 'Rapid' },
+                    ]),
+                ),
+                row(
+                    selectField(f, 'sqlDb', 'SQL Database', [
+                        { value: 'no', label: 'No' },
+                        { value: 'yes', label: 'Yes (PostgreSQL)' },
+                    ]),
+                    selectField(f, 'allowIngress', 'Public Ingress', [
+                        { value: 'no', label: 'No' },
+                        { value: 'yes', label: 'Yes (external HTTP load balancer)' },
+                    ]),
+                ),
+                checkboxGroup('Options',
+                    checkboxField(f, 'enableAutoscaling', 'Enable cluster autoscaling'),
+                    checkboxField(f, 'spotVms', 'Use Spot VMs for node pools'),
+                ),
+            ].join(''),
         };
-        return configs[featureId] || '<p>No configuration options.</p>';
+        return configs[featureId] || '<p class="text-base-content/60">No configuration options.</p>';
     }
 
     async function renderCost() {
         const container = document.getElementById('cost-summary');
-        container.innerHTML = '<p aria-busy="true">Calculating cost estimates&hellip;</p>';
+        container.innerHTML = `<div class="flex items-center gap-2 text-base-content/60"><span class="loading loading-spinner loading-sm"></span>Calculating cost estimates&hellip;</div>`;
         try {
             const resp = await fetch('/api/v1/cost-estimate', {
                 method: 'POST',
@@ -518,12 +597,16 @@
             const data = await resp.json();
             const fmt = (n) => '$' + n.toFixed(2);
 
-            let html = '<h4>Estimated Monthly Cost</h4>';
+            let html = '<h4 class="text-base font-semibold mt-4">Estimated Monthly Cost</h4><div class="space-y-2">';
             (data.features || []).forEach(f => {
                 html += `
-                    <details class="cost-feature">
-                        <summary><strong>${f.featureName}</strong> &mdash; ${fmt(f.monthlyUsd)} / month</summary>
-                        <div class="cost-line-items overflow-x-auto">
+                    <div class="collapse collapse-arrow bg-base-200 border border-base-300">
+                        <input type="checkbox" />
+                        <div class="collapse-title flex items-center justify-between pr-12">
+                            <span class="font-medium">${f.featureName}</span>
+                            <span class="text-base-content/70">${fmt(f.monthlyUsd)} / month</span>
+                        </div>
+                        <div class="collapse-content overflow-x-auto">
                             <table class="table table-zebra table-sm">
                                 <thead><tr><th>Resource</th><th>Description</th><th class="text-right">Monthly USD</th></tr></thead>
                                 <tbody>
@@ -531,18 +614,25 @@
                                         <tr>
                                             <td>${i.resource}</td>
                                             <td>${i.description}</td>
-                                            <td class="text-right">${fmt(i.monthlyUsd)}</td>
+                                            <td class="text-right font-mono">${fmt(i.monthlyUsd)}</td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
                             </table>
                         </div>
-                    </details>
+                    </div>
                 `;
             });
-            html += `<p class="cost-total"><strong>Total: ${fmt(data.totalMonthlyUsd)} ${data.currency || 'USD'} / month</strong></p>`;
+            html += `</div>
+                <div class="stats shadow mt-4 w-full">
+                    <div class="stat">
+                        <div class="stat-title">Total estimated monthly cost</div>
+                        <div class="stat-value text-primary">${fmt(data.totalMonthlyUsd)}</div>
+                        <div class="stat-desc">${data.currency || 'USD'} / month</div>
+                    </div>
+                </div>`;
             if (data.disclaimer) {
-                html += `<p><small>${data.disclaimer}</small></p>`;
+                html += `<p class="text-xs text-base-content/60 mt-2">${data.disclaimer}</p>`;
             }
             container.innerHTML = html;
         } catch (e) {
@@ -559,19 +649,41 @@
             industry: document.getElementById('industry').value,
         };
 
-        let html = `<h4>Customer</h4><table>
-            <tr><td>Name</td><td><strong>${customer.customerName}</strong></td></tr>
-            <tr><td>Email</td><td>${customer.contactEmail}</td></tr>
-            <tr><td>Contact</td><td>${customer.contactName || '-'}</td></tr>
-            <tr><td>Industry</td><td>${customer.industry || '-'}</td></tr>
-        </table>`;
+        const customerRow = (k, v) => `<tr><td class="text-base-content/60">${k}</td><td class="font-medium">${v || '-'}</td></tr>`;
+        let html = `
+            <div>
+                <h4 class="text-base font-semibold mb-2">Customer</h4>
+                <div class="overflow-x-auto">
+                    <table class="table table-sm">
+                        <tbody>
+                            ${customerRow('Name', `<strong>${customer.customerName}</strong>`)}
+                            ${customerRow('Email', customer.contactEmail)}
+                            ${customerRow('Contact', customer.contactName)}
+                            ${customerRow('Industry', customer.industry)}
+                        </tbody>
+                    </table>
+                </div>
+            </div>`;
 
-        html += `<h4>Selected Features</h4><table><thead><tr><th>Feature</th><th>Category</th><th>Status</th></tr></thead><tbody>`;
+        const maturityBadge = {
+            ga: 'badge-success',
+            beta: 'badge-warning',
+            alpha: 'badge-info',
+            stub: 'badge-ghost',
+        };
+        html += `
+            <div>
+                <h4 class="text-base font-semibold mb-2">Selected Features</h4>
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra table-sm">
+                        <thead><tr><th>Feature</th><th>Category</th><th>Status</th></tr></thead>
+                        <tbody>`;
         selectedFeatures.forEach(fid => {
             const f = features.find(x => x.id === fid);
-            html += `<tr><td>${f.name}</td><td>${f.category}</td><td><kbd>${f.maturity.toUpperCase()}</kbd></td></tr>`;
+            const badge = maturityBadge[f.maturity] || 'badge-ghost';
+            html += `<tr><td>${f.name}</td><td>${f.category}</td><td><span class="badge ${badge} badge-sm">${f.maturity.toUpperCase()}</span></td></tr>`;
         });
-        html += `</tbody></table>`;
+        html += `</tbody></table></div></div>`;
         container.innerHTML = html;
     }
 
@@ -604,9 +716,8 @@
 
     async function submitActivation() {
         const btn = document.getElementById('btn-next');
-        btn.textContent = 'Generating...';
+        btn.innerHTML = '<span class="loading loading-spinner loading-sm"></span>Generating...';
         btn.disabled = true;
-        btn.setAttribute('aria-busy', 'true');
 
         try {
             const resp = await fetch('/api/v1/activate', {
@@ -621,16 +732,32 @@
                 const url = URL.createObjectURL(blob);
                 const name = document.getElementById('customerName').value;
                 panel.innerHTML = `
-                    <p role="alert" class="success">Activation generated successfully.</p>
-                    <a href="${url}" download="${name}-activation.zip" role="button">Download ZIP</a>
-                    <p><small>Contains Helm umbrella chart with sub-charts for each selected feature.</small></p>
+                    <div role="alert" class="alert alert-success">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <span>Activation generated successfully.</span>
+                    </div>
+                    <a href="${url}" download="${name}-activation.zip" class="btn btn-primary">Download ZIP</a>
+                    <p class="text-sm text-base-content/60">Contains Helm umbrella chart with sub-charts for each selected feature.</p>
                 `;
             } else {
                 const err = await resp.json().catch(() => ({ error: resp.statusText }));
-                panel.innerHTML = `<p role="alert" class="error">Generation failed: ${JSON.stringify(err.errors || err.error)}</p>`;
+                panel.innerHTML = `
+                    <div role="alert" class="alert alert-error">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <div>
+                            <div class="font-semibold">Generation failed</div>
+                            <pre class="text-xs mt-1 whitespace-pre-wrap">${JSON.stringify(err.errors || err.error, null, 2)}</pre>
+                        </div>
+                    </div>
+                `;
             }
         } catch (e) {
-            document.getElementById('result-panel').innerHTML = `<p role="alert" class="error">Network error: ${e.message}</p>`;
+            document.getElementById('result-panel').innerHTML = `
+                <div role="alert" class="alert alert-error">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    <span>Network error: ${e.message}</span>
+                </div>
+            `;
         }
 
         btn.style.display = 'none';
@@ -647,13 +774,13 @@
         document.getElementById('btn-back').style.display = step > 0 && step < 5 ? '' : 'none';
         document.getElementById('btn-next').style.display = step < 5 ? '' : 'none';
 
+        const btn = document.getElementById('btn-next');
         if (step === 4) {
-            document.getElementById('btn-next').textContent = 'Generate Activation';
+            btn.textContent = 'Generate Activation';
         } else {
-            document.getElementById('btn-next').textContent = 'Continue';
-            document.getElementById('btn-next').disabled = false;
-            document.getElementById('btn-next').removeAttribute('aria-busy');
+            btn.textContent = 'Continue';
         }
+        btn.disabled = false;
     }
 
     async function nextStep() {
