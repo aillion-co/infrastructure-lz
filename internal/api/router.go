@@ -6,6 +6,7 @@ import (
 	"github.com/aillion-co/infrastructure-lz/internal/api/handlers"
 	"github.com/aillion-co/infrastructure-lz/internal/api/middleware"
 	"github.com/aillion-co/infrastructure-lz/internal/generator"
+	"github.com/aillion-co/infrastructure-lz/internal/pricing"
 	"github.com/aillion-co/infrastructure-lz/internal/web"
 )
 
@@ -15,7 +16,7 @@ type RouterConfig struct {
 	AllowedDomains []string
 }
 
-func NewRouter(gen *generator.Generator, activationGen *generator.ActivationGenerator, cfg ...RouterConfig) http.Handler {
+func NewRouter(gen *generator.Generator, activationGen *generator.ActivationGenerator, pricer pricing.Provider, cfg ...RouterConfig) http.Handler {
 	mux := http.NewServeMux()
 
 	// Health checks
@@ -30,7 +31,7 @@ func NewRouter(gen *generator.Generator, activationGen *generator.ActivationGene
 	activateHandler := handlers.NewActivateHandler(activationGen)
 	mux.Handle("POST /api/v1/activate", activateHandler)
 	mux.HandleFunc("GET /api/v1/features", handlers.FeaturesHandler)
-	mux.HandleFunc("POST /api/v1/cost-estimate", handlers.CostEstimateHandler)
+	mux.Handle("POST /api/v1/cost-estimate", handlers.NewCostHandler(pricer))
 
 	// Discovery API
 	mux.HandleFunc("POST /api/v1/discovery/evaluate", handlers.HandleDiscoveryEvaluate())

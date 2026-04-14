@@ -13,6 +13,7 @@ import (
 	"github.com/aillion-co/infrastructure-lz/internal/api"
 	"github.com/aillion-co/infrastructure-lz/internal/config"
 	"github.com/aillion-co/infrastructure-lz/internal/generator"
+	"github.com/aillion-co/infrastructure-lz/internal/pricing"
 	"github.com/aillion-co/infrastructure-lz/internal/telemetry"
 )
 
@@ -40,7 +41,9 @@ func run() error {
 
 	gen := generator.New()
 	activationGen := generator.NewActivationGenerator()
-	router := api.NewRouter(gen, activationGen)
+
+	pricer := buildPricingProvider(ctx, cfg.PricingProvider)
+	router := api.NewRouter(gen, activationGen, pricer)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,
@@ -71,4 +74,22 @@ func run() error {
 	}
 
 	return nil
+}
+
+// buildPricingProvider returns the configured pricing provider. When the
+// catalog provider is requested but cannot be initialized (e.g. missing
+// credentials), it logs a warning and falls back to the static provider.
+func buildPricingProvider(ctx context.Context, kind string) pricing.Provider {
+	static := pricing.NewStaticProvider()
+	if kind != "catalog" {
+		return static
+	}
+	cat, err := pricing.NewCatalogProvider(ctx, static)
+	if err != nil {
+		slog.WarnContext(ctx, "catalog pricing provider unavailable, falling back to static",
+			"error", err)
+		return static
+	}
+	slog.InfoContext(ctx, "using catalog pricing provider")
+	return cat
 }

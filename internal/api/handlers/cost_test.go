@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/aillion-co/infrastructure-lz/internal/models"
+	"github.com/aillion-co/infrastructure-lz/internal/pricing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,7 +34,7 @@ func TestCostEstimateHandler_AllFeatures(t *testing.T) {
 	httpReq.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
-	CostEstimateHandler(w, httpReq)
+	NewCostHandler(pricing.NewStaticProvider()).ServeHTTP(w, httpReq)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -68,7 +69,7 @@ func TestCostEstimateHandler_DisabledFeaturesExcluded(t *testing.T) {
 	httpReq := httptest.NewRequest(http.MethodPost, "/api/v1/cost-estimate", bytes.NewReader(body))
 	w := httptest.NewRecorder()
 
-	CostEstimateHandler(w, httpReq)
+	NewCostHandler(pricing.NewStaticProvider()).ServeHTTP(w, httpReq)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -83,7 +84,7 @@ func TestCostEstimateHandler_InvalidJSON(t *testing.T) {
 	httpReq := httptest.NewRequest(http.MethodPost, "/api/v1/cost-estimate", bytes.NewReader([]byte("{")))
 	w := httptest.NewRecorder()
 
-	CostEstimateHandler(w, httpReq)
+	NewCostHandler(pricing.NewStaticProvider()).ServeHTTP(w, httpReq)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
@@ -96,7 +97,7 @@ func TestCostEstimateHandler_EmptyFeatures(t *testing.T) {
 	httpReq := httptest.NewRequest(http.MethodPost, "/api/v1/cost-estimate", bytes.NewReader(body))
 	w := httptest.NewRecorder()
 
-	CostEstimateHandler(w, httpReq)
+	NewCostHandler(pricing.NewStaticProvider()).ServeHTTP(w, httpReq)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 

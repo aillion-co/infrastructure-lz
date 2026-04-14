@@ -9,6 +9,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 
 	"github.com/aillion-co/infrastructure-lz/internal/models"
+	"github.com/aillion-co/infrastructure-lz/internal/pricing"
 	"github.com/aillion-co/infrastructure-lz/internal/telemetry"
 )
 
@@ -35,8 +36,18 @@ type CostEstimateResponse struct {
 	Disclaimer   string         `json:"disclaimer"`
 }
 
-// CostEstimateHandler handles cost estimation requests.
-func CostEstimateHandler(w http.ResponseWriter, r *http.Request) {
+// CostHandler estimates activation costs using a pluggable pricing provider.
+type CostHandler struct {
+	provider pricing.Provider
+}
+
+// NewCostHandler constructs a CostHandler backed by the given provider.
+func NewCostHandler(provider pricing.Provider) *CostHandler {
+	return &CostHandler{provider: provider}
+}
+
+// ServeHTTP handles POST /api/v1/cost-estimate.
+func (h *CostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, span := telemetry.Tracer().Start(r.Context(), "handlers.CostEstimate")
 	defer span.End()
 
@@ -61,7 +72,8 @@ func CostEstimateHandler(w http.ResponseWriter, r *http.Request) {
 		if !f.Enabled {
 			continue
 		}
-		est := estimateFeature(f.FeatureID, f.Config)
+		fc := h.provider.EstimateFeature(ctx, f.FeatureID)
+		est := toCostEstimate(fc)
 		total += est.MonthlyUSD
 		estimates = append(estimates, est)
 	}
@@ -81,88 +93,21 @@ func CostEstimateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// estimateFeature returns a cost estimate for a given feature based on typical GCP pricing.
-func estimateFeature(featureID models.FeatureID, _ interface{}) CostEstimate {
-	switch featureID {
-	case models.FeatureBootstrapOrg:
-		return CostEstimate{
-			FeatureID:   featureID,
-			FeatureName: "Bootstrap Organisation",
-			Items: []CostLineItem{
-				{Resource: "GCP Project", Description: "Management project (no direct cost)", MonthlyUSD: 0},
-				{Resource: "Cloud NAT", Description: "NAT gateway per environment", MonthlyUSD: 32.12},
-				{Resource: "Cloud Router", Description: "Router per environment", MonthlyUSD: 0},
-				{Resource: "GKE Autopilot", Description: "Per-environment cluster management fee", MonthlyUSD: 73.00},
-				{Resource: "VPC Network", Description: "Shared VPC (no base cost)", MonthlyUSD: 0},
-			},
-			MonthlyUSD: 105.12,
-		}
-
-	case models.FeatureBigQueryAnalytics:
-		return CostEstimate{
-			FeatureID:   featureID,
-			FeatureName: "BigQuery Analytics",
-			Items: []CostLineItem{
-				{Resource: "BigQuery Storage", Description: "Active storage (first 10GB free), est. 100GB", MonthlyUSD: 2.00},
-				{Resource: "BigQuery Queries", Description: "On-demand queries (first 1TB/mo free)", MonthlyUSD: 0},
-				{Resource: "Data Transfer", Description: "Scheduled data transfer job", MonthlyUSD: 0},
-			},
-			MonthlyUSD: 2.00,
-		}
-
-	case models.FeatureDeveloperPortal:
-		return CostEstimate{
-			FeatureID:   featureID,
-			FeatureName: "Dynamic Developer Portal",
-			Items: []CostLineItem{
-				{Resource: "Config Controller", Description: "GKE-based Config Controller cluster", MonthlyUSD: 73.00},
-				{Resource: "Compute (Backstage)", Description: "Backstage workloads on Config Controller", MonthlyUSD: 50.00},
-				{Resource: "Persistent Disk", Description: "PostgreSQL PVC (10GB SSD)", MonthlyUSD: 1.70},
-			},
-			MonthlyUSD: 124.70,
-		}
-
-	case models.FeatureHardenedImageBakery:
-		return CostEstimate{
-			FeatureID:   featureID,
-			FeatureName: "Hardened Image Bakery",
-			Items: []CostLineItem{
-				{Resource: "Cloud Build", Description: "Build minutes (first 120 min/day free)", MonthlyUSD: 0},
-				{Resource: "Artifact Registry", Description: "Image storage (first 500MB free)", MonthlyUSD: 0.50},
-				{Resource: "Compute Engine", Description: "Temporary build VMs (per-build)", MonthlyUSD: 5.00},
-			},
-			MonthlyUSD: 5.50,
-		}
-
-	case models.FeatureSecureInferencing:
-		return CostEstimate{
-			FeatureID:   featureID,
-			FeatureName: "Secure Inferencing",
-			Items: []CostLineItem{
-				{Resource: "Cloud Run", Description: "LiteLLM proxy (1 vCPU, 512Mi, min 1 instance)", MonthlyUSD: 25.00},
-				{Resource: "Secret Manager", Description: "Master key secret (6 versions)", MonthlyUSD: 0.06},
-				{Resource: "Vertex AI", Description: "Gemini API calls (usage-based, varies)", MonthlyUSD: 0},
-			},
-			MonthlyUSD: 25.06,
-		}
-
-	case models.FeatureSkaffoldAppDev:
-		return CostEstimate{
-			FeatureID:   featureID,
-			FeatureName: "Skaffold Application Development",
-			Items: []CostLineItem{
-				{Resource: "GKE Autopilot", Description: "Cluster management fee", MonthlyUSD: 73.00},
-				{Resource: "Compute", Description: "Autopilot pod resources (e2-standard-4 equiv)", MonthlyUSD: 95.00},
-				{Resource: "Cloud SQL", Description: "PostgreSQL db-f1-micro (if enabled)", MonthlyUSD: 10.00},
-			},
-			MonthlyUSD: 178.00,
-		}
-
-	default:
-		return CostEstimate{
-			FeatureID:   featureID,
-			FeatureName: string(featureID),
-			MonthlyUSD:  0,
-		}
+// toCostEstimate adapts the pricing package's FeatureCost into the
+// JSON shape published on the cost-estimate endpoint.
+func toCostEstimate(fc pricing.FeatureCost) CostEstimate {
+	items := make([]CostLineItem, 0, len(fc.Items))
+	for _, i := range fc.Items {
+		items = append(items, CostLineItem{
+			Resource:    i.Resource,
+			Description: i.Description,
+			MonthlyUSD:  i.MonthlyUSD,
+		})
+	}
+	return CostEstimate{
+		FeatureID:   fc.FeatureID,
+		FeatureName: fc.FeatureName,
+		Items:       items,
+		MonthlyUSD:  fc.MonthlyUSD,
 	}
 }
