@@ -131,7 +131,9 @@ type DiscoveryFieldOption struct {
 }
 
 // DiscoverySectionMeta describes a section of the discovery form for wizard rendering.
+// Key is the JSON field name of the section in DiscoveryResponse (e.g. "customerInfo").
 type DiscoverySectionMeta struct {
+	Key         string               `json:"key"`
 	Title       string               `json:"title"`
 	Description string               `json:"description"`
 	Fields      []DiscoveryFieldMeta `json:"fields"`

@@ -29,8 +29,8 @@
                     <p>Configure your GCP Landing Zone and download Helm charts with Config Connector resources.</p>
                 </hgroup>
                 <div id="wizard-progress">
-                    <progress id="step-progress" value="0" max="4"></progress>
-                    <small id="step-label">Step 1 of 5: Customer Details</small>
+                    <progress id="step-progress" value="0" max="5"></progress>
+                    <small id="step-label">Step 1 of 6: Customer Details</small>
                 </div>
             </header>
 
@@ -76,27 +76,40 @@
                 </label>
             </section>
 
-            <!-- Step 1: Feature Selection -->
+            <!-- Step 1: Discovery (optional) -->
             <section class="wizard-step" id="step-1" data-step="1" style="display:none;">
+                <hgroup>
+                    <h3>Discovery</h3>
+                    <p>Tell us about your environment so we can recommend the right features. All fields are optional &mdash; feel free to skip.</p>
+                </hgroup>
+                <div id="discovery-form"><p aria-busy="true">Loading questionnaire&hellip;</p></div>
+                <p>
+                    <button type="button" class="secondary outline" onclick="skipDiscovery()">Skip discovery</button>
+                </p>
+            </section>
+
+            <!-- Step 2: Feature Selection -->
+            <section class="wizard-step" id="step-2" data-step="2" style="display:none;">
                 <h3>Select Features</h3>
                 <p>Choose the infrastructure components to include in your activation.</p>
+                <div id="recommended-banner" style="display:none;"></div>
                 <div class="grid" id="feature-grid"></div>
             </section>
 
-            <!-- Step 2: Feature Configuration -->
-            <section class="wizard-step" id="step-2" data-step="2" style="display:none;">
+            <!-- Step 3: Feature Configuration -->
+            <section class="wizard-step" id="step-3" data-step="3" style="display:none;">
                 <h3>Configure Features</h3>
                 <div id="feature-configs"></div>
             </section>
 
-            <!-- Step 3: Review -->
-            <section class="wizard-step" id="step-3" data-step="3" style="display:none;">
+            <!-- Step 4: Review -->
+            <section class="wizard-step" id="step-4" data-step="4" style="display:none;">
                 <h3>Review</h3>
                 <div id="review-summary"></div>
             </section>
 
-            <!-- Step 4: Result -->
-            <section class="wizard-step" id="step-4" data-step="4" style="display:none;">
+            <!-- Step 5: Result -->
+            <section class="wizard-step" id="step-5" data-step="5" style="display:none;">
                 <h3>Activation Complete</h3>
                 <div id="result-panel"></div>
             </section>
@@ -114,12 +127,17 @@
     <script>
     // State
     let currentStep = 0;
-    const totalSteps = 5;
+    const totalSteps = 6;
     let features = [];
     let selectedFeatures = new Set();
+    let discoverySections = [];
+    let discoveryRecommendations = {}; // { featureId: {recommended, confidence, reason} }
+    let discoverySkipped = false;
+    let discoveryLoaded = false;
 
     const stepLabels = [
         'Customer Details',
+        'Discovery',
         'Feature Selection',
         'Feature Configuration',
         'Review',
@@ -134,27 +152,167 @@
             renderFeatureGrid();
         });
 
+    // Load discovery sections on init
+    fetch('/api/v1/discovery/sections')
+        .then(r => r.json())
+        .then(data => {
+            discoverySections = data;
+            renderDiscoveryForm();
+            discoveryLoaded = true;
+        })
+        .catch(e => {
+            document.getElementById('discovery-form').innerHTML =
+                `<p role="alert" class="error">Failed to load discovery questionnaire: ${e.message}</p>`;
+        });
+
+    function renderDiscoveryForm() {
+        const container = document.getElementById('discovery-form');
+        container.innerHTML = discoverySections.map(section => `
+            <details class="discovery-section" open>
+                <summary><strong>${section.title}</strong></summary>
+                <p><small>${section.description}</small></p>
+                ${section.fields.map(f => renderDiscoveryField(section.key, f)).join('')}
+            </details>
+        `).join('');
+    }
+
+    function renderDiscoveryField(sectionKey, field) {
+        const id = `disc-${sectionKey}-${field.key}`;
+        const dataAttrs = `data-section="${sectionKey}" data-field="${field.key}" data-type="${field.type}" class="disc"`;
+        switch (field.type) {
+            case 'text':
+                return `<label>${field.label}${field.required ? ' <span class="required">*</span>' : ''}
+                    <input type="text" id="${id}" ${dataAttrs}></label>`;
+            case 'select':
+                return `<label>${field.label}
+                    <select id="${id}" ${dataAttrs}>
+                        <option value="">Select&hellip;</option>
+                        ${(field.options || []).map(o => `<option value="${o.value}">${o.label}</option>`).join('')}
+                    </select></label>`;
+            case 'boolean':
+                return `<label><input type="checkbox" id="${id}" ${dataAttrs}> ${field.label}</label>`;
+            case 'multiselect':
+                return `<fieldset><legend>${field.label}</legend>
+                    ${(field.options || []).map((o, i) => `
+                        <label><input type="checkbox" id="${id}-${i}"
+                            data-section="${sectionKey}" data-field="${field.key}" data-type="multiselect"
+                            data-value="${o.value}" class="disc"> ${o.label}</label>
+                    `).join('')}
+                </fieldset>`;
+            default:
+                return '';
+        }
+    }
+
+    function collectDiscoveryPayload() {
+        const payload = {};
+        document.querySelectorAll('.disc').forEach(el => {
+            const section = el.dataset.section;
+            const field = el.dataset.field;
+            const type = el.dataset.type;
+            payload[section] = payload[section] || {};
+            if (type === 'boolean') {
+                payload[section][field] = el.checked;
+            } else if (type === 'multiselect') {
+                payload[section][field] = payload[section][field] || [];
+                if (el.checked) {
+                    payload[section][field].push(el.dataset.value);
+                }
+            } else if (type === 'select' || type === 'text') {
+                if (el.value) {
+                    payload[section][field] = el.value;
+                }
+            }
+        });
+        return payload;
+    }
+
+    async function evaluateDiscovery() {
+        try {
+            const resp = await fetch('/api/v1/discovery/evaluate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(collectDiscoveryPayload()),
+            });
+            if (!resp.ok) return;
+            const data = await resp.json();
+            discoveryRecommendations = {};
+            (data.recommendations || []).forEach(r => {
+                discoveryRecommendations[r.featureId] = r;
+            });
+            applyRecommendationsToSelection();
+        } catch (e) {
+            console.warn('Discovery evaluation failed:', e);
+        }
+    }
+
+    function applyRecommendationsToSelection() {
+        Object.values(discoveryRecommendations).forEach(rec => {
+            if (!rec.recommended) return;
+            const f = features.find(x => x.id === rec.featureId);
+            if (!f || f.maturity === 'stub') return;
+            selectedFeatures.add(rec.featureId);
+            if (f.dependsOn) {
+                f.dependsOn.forEach(dep => selectedFeatures.add(dep));
+            }
+        });
+        renderFeatureGrid();
+        renderRecommendedBanner();
+    }
+
+    function skipDiscovery() {
+        discoverySkipped = true;
+        discoveryRecommendations = {};
+        currentStep = 2;
+        showStep(currentStep);
+    }
+
+    function renderRecommendedBanner() {
+        const banner = document.getElementById('recommended-banner');
+        const recommended = Object.values(discoveryRecommendations).filter(r => r.recommended);
+        if (recommended.length === 0) {
+            banner.style.display = 'none';
+            return;
+        }
+        banner.style.display = 'block';
+        banner.innerHTML = `
+            <article class="recommended-banner">
+                <strong>Based on your discovery answers, we recommend ${recommended.length} feature${recommended.length === 1 ? '' : 's'}.</strong>
+                <p><small>Recommended features are pre-selected and badged below. You can adjust the selection.</small></p>
+            </article>
+        `;
+    }
+
     function renderFeatureGrid() {
         const grid = document.getElementById('feature-grid');
-        grid.innerHTML = features.map(f => `
-            <article class="feature-card ${f.maturity === 'stub' ? 'disabled' : ''}"
+        grid.innerHTML = features.map(f => {
+            const isSelected = selectedFeatures.has(f.id);
+            const rec = discoveryRecommendations[f.id];
+            const isRecommended = rec && rec.recommended;
+            return `
+            <article class="feature-card ${f.maturity === 'stub' ? 'disabled' : ''} ${isSelected ? 'selected' : ''} ${isRecommended ? 'recommended' : ''}"
                      id="feature-${f.id}" onclick="toggleFeature('${f.id}', this)">
                 <header>
                     <hgroup>
                         <h4>${f.name}</h4>
-                        <p><kbd>${f.maturity.toUpperCase()}</kbd> &middot; ${f.category}</p>
+                        <p>
+                            <kbd>${f.maturity.toUpperCase()}</kbd> &middot; ${f.category}
+                            ${isRecommended ? '<kbd class="rec-badge">RECOMMENDED</kbd>' : ''}
+                        </p>
                     </hgroup>
                 </header>
                 <p>${f.description}</p>
+                ${isRecommended ? `<p><small><em>${rec.reason}</em></small></p>` : ''}
                 <footer>
                     <label>
-                        <input type="checkbox" id="check-${f.id}" ${f.maturity === 'stub' ? 'disabled' : ''}
+                        <input type="checkbox" id="check-${f.id}" ${f.maturity === 'stub' ? 'disabled' : ''} ${isSelected ? 'checked' : ''}
                                onchange="event.stopPropagation()">
                         Select
                     </label>
                 </footer>
             </article>
-        `).join('');
+        `;
+        }).join('');
     }
 
     function toggleFeature(id, el) {
@@ -411,10 +569,10 @@
         });
         document.getElementById('step-progress').value = step;
         document.getElementById('step-label').textContent = `Step ${step + 1} of ${totalSteps}: ${stepLabels[step]}`;
-        document.getElementById('btn-back').style.display = step > 0 && step < 4 ? '' : 'none';
-        document.getElementById('btn-next').style.display = step < 4 ? '' : 'none';
+        document.getElementById('btn-back').style.display = step > 0 && step < 5 ? '' : 'none';
+        document.getElementById('btn-next').style.display = step < 5 ? '' : 'none';
 
-        if (step === 3) {
+        if (step === 4) {
             document.getElementById('btn-next').textContent = 'Generate Activation';
         } else {
             document.getElementById('btn-next').textContent = 'Continue';
@@ -423,27 +581,34 @@
         }
     }
 
-    function nextStep() {
+    async function nextStep() {
         if (currentStep === 0) {
             if (!document.getElementById('customerName').value || !document.getElementById('contactEmail').value) {
                 alert('Customer name and email are required.');
                 return;
             }
-            // Pre-fill customer name in bootstrap-org config
         }
         if (currentStep === 1) {
+            if (!discoverySkipped) {
+                await evaluateDiscovery();
+                applyRecommendationsToSelection();
+            }
+            renderFeatureGrid();
+            renderRecommendedBanner();
+        }
+        if (currentStep === 2) {
             if (selectedFeatures.size === 0) {
                 alert('Please select at least one feature.');
                 return;
             }
             renderFeatureConfigs();
         }
-        if (currentStep === 2) {
+        if (currentStep === 3) {
             renderReview();
         }
-        if (currentStep === 3) {
+        if (currentStep === 4) {
             submitActivation();
-            currentStep = 4;
+            currentStep = 5;
             showStep(currentStep);
             return;
         }

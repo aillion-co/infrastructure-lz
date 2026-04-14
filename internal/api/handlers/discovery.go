@@ -200,6 +200,7 @@ func sliceContainsAny(slice []string, substrs ...string) bool {
 func buildDiscoverySections() []models.DiscoverySectionMeta {
 	return []models.DiscoverySectionMeta{
 		{
+			Key:         "customerInfo",
 			Title:       "Customer Information",
 			Description: "Basic customer and engagement context",
 			Fields: []models.DiscoveryFieldMeta{
@@ -223,6 +224,7 @@ func buildDiscoverySections() []models.DiscoverySectionMeta {
 			},
 		},
 		{
+			Key:         "identity",
 			Title:       "Identity & Access",
 			Description: "Identity provider and access management configuration",
 			Fields: []models.DiscoveryFieldMeta{
@@ -246,6 +248,7 @@ func buildDiscoverySections() []models.DiscoverySectionMeta {
 			},
 		},
 		{
+			Key:         "resourceManagement",
 			Title:       "Resource Management",
 			Description: "Organization and resource management preferences",
 			Fields: []models.DiscoveryFieldMeta{
@@ -261,6 +264,7 @@ func buildDiscoverySections() []models.DiscoverySectionMeta {
 			},
 		},
 		{
+			Key:         "networking",
 			Title:       "Networking",
 			Description: "Network topology and connectivity requirements",
 			Fields: []models.DiscoveryFieldMeta{
@@ -281,6 +285,7 @@ func buildDiscoverySections() []models.DiscoverySectionMeta {
 			},
 		},
 		{
+			Key:         "dataManagement",
 			Title:       "Data Management",
 			Description: "Data management and encryption preferences",
 			Fields: []models.DiscoveryFieldMeta{
@@ -293,6 +298,7 @@ func buildDiscoverySections() []models.DiscoverySectionMeta {
 			},
 		},
 		{
+			Key:         "costControl",
 			Title:       "Cost Control",
 			Description: "Billing and budget preferences",
 			Fields: []models.DiscoveryFieldMeta{
@@ -309,6 +315,7 @@ func buildDiscoverySections() []models.DiscoverySectionMeta {
 			},
 		},
 		{
+			Key:         "iacCicd",
 			Title:       "IAC & CI/CD",
 			Description: "Infrastructure-as-code and CI/CD tooling preferences",
 			Fields: []models.DiscoveryFieldMeta{
@@ -327,6 +334,7 @@ func buildDiscoverySections() []models.DiscoverySectionMeta {
 			},
 		},
 		{
+			Key:         "aiEnablement",
 			Title:       "AI Enablement",
 			Description: "AI and ML platform requirements",
 			Fields: []models.DiscoveryFieldMeta{
@@ -339,6 +347,7 @@ func buildDiscoverySections() []models.DiscoverySectionMeta {
 			},
 		},
 		{
+			Key:         "security",
 			Title:       "Security",
 			Description: "Security posture and policy requirements",
 			Fields: []models.DiscoveryFieldMeta{
@@ -357,6 +366,7 @@ func buildDiscoverySections() []models.DiscoverySectionMeta {
 			},
 		},
 		{
+			Key:         "resilience",
 			Title:       "Resilience",
 			Description: "Uptime and disaster recovery requirements",
 			Fields: []models.DiscoveryFieldMeta{

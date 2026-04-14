@@ -159,6 +159,7 @@ func TestHandleDiscoverySections_ReturnsAllSections(t *testing.T) {
 
 	assert.GreaterOrEqual(t, len(sections), 10)
 	for _, s := range sections {
+		assert.NotEmpty(t, s.Key, "section %q missing Key", s.Title)
 		assert.NotEmpty(t, s.Title)
 		assert.NotEmpty(t, s.Fields)
 	}
