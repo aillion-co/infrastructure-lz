@@ -75,6 +75,31 @@
     margin-bottom: 0.5rem;
 }
 
+/* Cost summary */
+#cost-summary {
+    margin-top: 1.5rem;
+}
+#cost-summary h4 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+.cost-feature {
+    margin-bottom: 0.5rem;
+}
+.cost-feature summary {
+    cursor: pointer;
+    padding: 0.5rem 0;
+}
+.cost-line-items table {
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
+}
+.cost-total {
+    margin-top: 1rem;
+    font-size: 1.1rem;
+    color: var(--pico-primary);
+}
+
 /* Result panel */
 #result-panel .success {
     color: var(--pico-ins-color, #2e7d32);

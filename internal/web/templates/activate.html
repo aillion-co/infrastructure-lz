@@ -108,6 +108,7 @@
             <section class="wizard-step" id="step-4" data-step="4" style="display:none;">
                 <h3>Review</h3>
                 <div id="review-summary"></div>
+                <div id="cost-summary"><p aria-busy="true">Calculating cost estimates&hellip;</p></div>
             </section>
 
             <!-- Step 5: Result -->
@@ -483,6 +484,53 @@
         return configs[featureId] || '<p>No configuration options.</p>';
     }
 
+    async function renderCost() {
+        const container = document.getElementById('cost-summary');
+        container.innerHTML = '<p aria-busy="true">Calculating cost estimates&hellip;</p>';
+        try {
+            const resp = await fetch('/api/v1/cost-estimate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(collectPayload()),
+            });
+            if (!resp.ok) {
+                throw new Error(`HTTP ${resp.status}`);
+            }
+            const data = await resp.json();
+            const fmt = (n) => '$' + n.toFixed(2);
+
+            let html = '<h4>Estimated Monthly Cost</h4>';
+            (data.features || []).forEach(f => {
+                html += `
+                    <details class="cost-feature">
+                        <summary><strong>${f.featureName}</strong> &mdash; ${fmt(f.monthlyUsd)} / month</summary>
+                        <div class="cost-line-items overflow-x-auto">
+                            <table class="table table-zebra table-sm">
+                                <thead><tr><th>Resource</th><th>Description</th><th class="text-right">Monthly USD</th></tr></thead>
+                                <tbody>
+                                    ${(f.items || []).map(i => `
+                                        <tr>
+                                            <td>${i.resource}</td>
+                                            <td>${i.description}</td>
+                                            <td class="text-right">${fmt(i.monthlyUsd)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+                `;
+            });
+            html += `<p class="cost-total"><strong>Total: ${fmt(data.totalMonthlyUsd)} ${data.currency || 'USD'} / month</strong></p>`;
+            if (data.disclaimer) {
+                html += `<p><small>${data.disclaimer}</small></p>`;
+            }
+            container.innerHTML = html;
+        } catch (e) {
+            container.innerHTML = `<div role="alert" class="alert alert-warning"><span>Cost estimate unavailable: ${e.message}. You can still download the activation.</span></div>`;
+        }
+    }
+
     function renderReview() {
         const container = document.getElementById('review-summary');
         const customer = {
@@ -613,6 +661,7 @@
         }
         if (currentStep === 3) {
             renderReview();
+            renderCost();
         }
         if (currentStep === 4) {
             submitActivation();
