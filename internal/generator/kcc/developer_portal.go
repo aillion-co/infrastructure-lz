@@ -62,6 +62,15 @@ func (b *developerPortalBuilder) Build(config interface{}) ([]Resource, error) {
 		resources = append(resources, Resource{Name: "config-sync.yaml", Content: res})
 	}
 
+	// CMEK IAM binding for the container service agent (Config Controller GKE).
+	if cfg.CMEK {
+		res, err = renderTemplate("cmek-iam.yaml", portalCMEKIAM, cfg)
+		if err != nil {
+			return nil, err
+		}
+		resources = append(resources, Resource{Name: "cmek-iam.yaml", Content: res})
+	}
+
 	return resources, nil
 }
 
@@ -262,4 +271,35 @@ spec:
     auth: ssh
     secretRef:
       name: git-creds
+`
+
+// portalCMEKIAM binds the container service agent in the portal project to
+// the gke crypto key in the mgmt project so the Config Controller cluster's
+// databaseEncryption can reconcile.
+const portalCMEKIAM = `apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: ServiceIdentity
+metadata:
+  name: {{ .ProjectName }}-container-identity
+  namespace: config-connector
+spec:
+  projectRef:
+    external: {{ .GCPProjectID }}
+  resourceID: container.googleapis.com
+---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicyMember
+metadata:
+  name: {{ .ProjectName }}-gke-cmek
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: {{ .CMEKKeyProject }}
+spec:
+  resourceRef:
+    apiVersion: kms.cnrm.cloud.google.com/v1beta1
+    kind: KMSCryptoKey
+    name: {{ .CMEKKeyCustomer }}-gke
+  role: roles/cloudkms.cryptoKeyEncrypterDecrypter
+  memberFrom:
+    serviceIdentityRef:
+      name: {{ .ProjectName }}-container-identity
 `

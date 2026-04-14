@@ -223,7 +223,7 @@ func TestActivate_CMEKEverywhere(t *testing.T) {
 	// Every encryptable resource across every feature must carry a CMEK
 	// reference that points back into the bootstrap key ring.
 	cases := []struct {
-		file  string
+		file   string
 		needle string
 	}{
 		// bootstrap-org env GKE clusters use databaseEncryption.keyName.
@@ -246,6 +246,39 @@ func TestActivate_CMEKEverywhere(t *testing.T) {
 	for _, c := range cases {
 		assertZipFileContains(t, zipData, c.file, c.needle)
 	}
+
+	// Every CMEK-enabled feature emits ServiceIdentity + IAMPolicyMember
+	// pairs so the service agent for each encrypting service has
+	// cryptoKeyEncrypterDecrypter on the relevant crypto key.
+	iamCases := []struct {
+		file       string
+		service    string
+		keyPurpose string
+	}{
+		{"bootstrap-org/templates/cmek-iam.yaml", "container.googleapis.com", "gke"},
+		{"hardened-image-bakery/templates/cmek-iam.yaml", "artifactregistry.googleapis.com", "artifact-registry"},
+		{"hardened-image-bakery/templates/cmek-iam.yaml", "storage.googleapis.com", "storage"},
+		{"secure-inferencing/templates/cmek-iam.yaml", "secretmanager.googleapis.com", "secrets"},
+		{"secure-inferencing/templates/cmek-iam.yaml", "run.googleapis.com", "run"},
+		{"skaffold-application-development/templates/cmek-iam.yaml", "container.googleapis.com", "gke"},
+		{"skaffold-application-development/templates/cmek-iam.yaml", "sqladmin.googleapis.com", "sql"},
+		{"dynamic-developer-portal/templates/cmek-iam.yaml", "container.googleapis.com", "gke"},
+	}
+	for _, c := range iamCases {
+		assertZipFileContains(t, zipData, c.file, "kind: ServiceIdentity")
+		assertZipFileContains(t, zipData, c.file, "resourceID: "+c.service)
+		assertZipFileContains(t, zipData, c.file, "kind: IAMPolicyMember")
+		assertZipFileContains(t, zipData, c.file, "roles/cloudkms.cryptoKeyEncrypterDecrypter")
+		assertZipFileContains(t, zipData, c.file, "name: cmektest-"+c.keyPurpose)
+	}
+
+	// BigQuery CMEK cannot use ServiceIdentity (BQ's encryption service
+	// agent isn't resolvable via serviceusage.generateServiceIdentity), so
+	// the bigquery-analytics sub-chart ships a ConfigMap documenting the
+	// manual gcloud step instead.
+	assertZipFileContains(t, zipData,
+		"bigquery-analytics/templates/cmek-iam-notes.yaml",
+		"bigquery-encryption.iam.gserviceaccount.com")
 }
 
 // TestActivate_CMEKDisabledProducesNoKeyRefs is the control test for

@@ -43,8 +43,9 @@ func propagateCMEK(req *models.ActivationRequest) error {
 	if customerName == "" || region == "" {
 		return fmt.Errorf("CMEK requires bootstrap-org customerName and region")
 	}
-	prefix := fmt.Sprintf("projects/%s-mgmt/locations/%s/keyRings/%s-activation",
-		customerName, region, customerName)
+	mgmtProject := customerName + "-mgmt"
+	prefix := fmt.Sprintf("projects/%s/locations/%s/keyRings/%s-activation",
+		mgmtProject, region, customerName)
 
 	for i := range req.Features {
 		f := &req.Features[i]
@@ -57,6 +58,8 @@ func propagateCMEK(req *models.ActivationRequest) error {
 		}
 		m["cmek"] = true
 		m["cmekKeyPrefix"] = prefix
+		m["cmekKeyProject"] = mgmtProject
+		m["cmekKeyCustomer"] = customerName
 		f.Config = m
 	}
 	return nil

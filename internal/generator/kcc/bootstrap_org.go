@@ -97,6 +97,17 @@ func (b *bootstrapOrgBuilder) Build(config interface{}) ([]Resource, error) {
 			return nil, err
 		}
 		resources = append(resources, Resource{Name: "kms-keyring.yaml", Content: res})
+
+		// CMEK IAM: grant each env's GKE service agent the
+		// cryptoKeyEncrypterDecrypter role on the gke crypto key so the
+		// cluster's databaseEncryption can actually use the key.
+		if cfg.GKECluster {
+			res, err = renderTemplate("cmek-iam.yaml", bootstrapOrgCMEKIAM, cfg)
+			if err != nil {
+				return nil, err
+			}
+			resources = append(resources, Resource{Name: "cmek-iam.yaml", Content: res})
+		}
 	}
 
 	return resources, nil
@@ -614,4 +625,41 @@ spec:
     algorithm: GOOGLE_SYMMETRIC_ENCRYPTION
     protectionLevel: SOFTWARE
 {{- end }}
+`
+
+// bootstrapOrgCMEKIAM binds the container.googleapis.com service agent in
+// each env project to roles/cloudkms.cryptoKeyEncrypterDecrypter on the gke
+// crypto key. Without this binding the env GKE clusters' databaseEncryption
+// reconcile fails with a KMS permission error.
+const bootstrapOrgCMEKIAM = `{{- $customer := .CustomerName }}
+{{- $workload := .WorkloadName }}
+{{- range $env := splitCSV .Envs }}
+apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: ServiceIdentity
+metadata:
+  name: {{ $customer }}-{{ $workload }}-{{ $env }}-container-identity
+  namespace: config-connector
+spec:
+  projectRef:
+    name: {{ $customer }}-{{ $workload }}-{{ $env }}
+  resourceID: container.googleapis.com
+---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicyMember
+metadata:
+  name: {{ $customer }}-{{ $workload }}-{{ $env }}-gke-cmek
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: {{ $customer }}-mgmt
+spec:
+  resourceRef:
+    apiVersion: kms.cnrm.cloud.google.com/v1beta1
+    kind: KMSCryptoKey
+    name: {{ $customer }}-gke
+  role: roles/cloudkms.cryptoKeyEncrypterDecrypter
+  memberFrom:
+    serviceIdentityRef:
+      name: {{ $customer }}-{{ $workload }}-{{ $env }}-container-identity
+---
+{{ end }}
 `
