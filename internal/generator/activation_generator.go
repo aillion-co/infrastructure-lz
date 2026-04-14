@@ -19,7 +19,7 @@ import (
 // ActivationGenerator handles generation for the full activation system with
 // multiple feature types and per-feature Helm sub-charts.
 type ActivationGenerator struct {
-	registry        *kcc.FeatureBuilderRegistry
+	registry          *kcc.FeatureBuilderRegistry
 	activationBuilder *helm.ActivationBuilder
 }
 

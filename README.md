@@ -45,8 +45,8 @@ A Go web application that generates Infrastructure-as-Code configurations for Go
 
 ## Prerequisites
 
-- **Go 1.23+**
-- **golangci-lint** — `go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.62`
+- **Go 1.25+**
+- **golangci-lint** — `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.5.0`
 - **air** (optional, for hot-reload) — `go install github.com/air-verse/air@latest`
 - **Docker** (for container builds)
 - **Helm v3** (for chart validation)

@@ -15,7 +15,7 @@ type healthResponse struct {
 
 func Healthz(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(healthResponse{
+	_ = json.NewEncoder(w).Encode(healthResponse{
 		Status:  "ok",
 		Version: config.Version,
 		Commit:  config.Commit,
@@ -24,7 +24,7 @@ func Healthz(w http.ResponseWriter, r *http.Request) {
 
 func Readyz(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(healthResponse{
+	_ = json.NewEncoder(w).Encode(healthResponse{
 		Status:  "ready",
 		Version: config.Version,
 		Commit:  config.Commit,

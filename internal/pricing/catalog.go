@@ -2,6 +2,7 @@ package pricing
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -41,12 +42,12 @@ type CatalogProvider struct {
 // display name (e.g. "Compute Engine"); SkuMatch is a case-insensitive
 // substring filter against the SKU description.
 type catalogAssumption struct {
-	Resource         string
-	Description      string
-	ServiceDisplay   string
-	SkuMatch         string
-	MonthlyQuantity  float64 // multiplier applied to unit price
-	StaticFallback   float64 // used when SKU lookup fails
+	Resource        string
+	Description     string
+	ServiceDisplay  string
+	SkuMatch        string
+	MonthlyQuantity float64 // multiplier applied to unit price
+	StaticFallback  float64 // used when SKU lookup fails
 }
 
 // featureAssumptions maps a feature ID to the set of line items the
@@ -120,7 +121,7 @@ func (p *CatalogProvider) refreshServiceIDs(ctx context.Context) error {
 	it := p.client.ListServices(ctx, &billingpb.ListServicesRequest{})
 	for {
 		svc, err := it.Next()
-		if err == iterator.Done {
+		if errors.Is(err, iterator.Done) {
 			break
 		}
 		if err != nil {
@@ -148,10 +149,7 @@ func (p *CatalogProvider) EstimateFeature(ctx context.Context, featureID models.
 
 	var total float64
 	for i := range cost.Items {
-		live := p.applyAssumption(ctx, &cost.Items[i], assumptions)
-		if live {
-			// item already updated by applyAssumption
-		}
+		p.applyAssumption(ctx, &cost.Items[i], assumptions)
 		total += cost.Items[i].MonthlyUSD
 	}
 	cost.MonthlyUSD = total
@@ -203,7 +201,7 @@ func (p *CatalogProvider) lookupUnitPrice(ctx context.Context, serviceDisplay, s
 	})
 	for {
 		sku, err := it.Next()
-		if err == iterator.Done {
+		if errors.Is(err, iterator.Done) {
 			break
 		}
 		if err != nil {

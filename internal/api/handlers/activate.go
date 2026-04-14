@@ -55,7 +55,7 @@ func (h *ActivateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		span.SetStatus(codes.Error, "validation failed")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		json.NewEncoder(w).Encode(map[string]any{"errors": errs})
+		_ = json.NewEncoder(w).Encode(map[string]any{"errors": errs})
 		return
 	}
 
@@ -68,7 +68,7 @@ func (h *ActivateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			slog.WarnContext(ctx, "activation feature config invalid", "error", err, "customer", req.Customer.CustomerName)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]any{
+			_ = json.NewEncoder(w).Encode(map[string]any{
 				"error":   err.Error(),
 				"feature": validationErr.Feature,
 				"field":   validationErr.Field,
@@ -84,7 +84,9 @@ func (h *ActivateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	filename := fmt.Sprintf("%s-activation.zip", req.Customer.CustomerName)
 	w.Header().Set("Content-Type", "application/zip")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
-	w.Write(zipData)
+	if _, err := w.Write(zipData); err != nil {
+		slog.WarnContext(ctx, "failed to write activation zip", "error", err)
+	}
 }
 
 func validateActivationRequest(req *models.ActivationRequest) []string {
@@ -116,5 +118,5 @@ func FeaturesHandler(w http.ResponseWriter, r *http.Request) {
 	defer span.End()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(models.FeatureRegistry())
+	_ = json.NewEncoder(w).Encode(models.FeatureRegistry())
 }

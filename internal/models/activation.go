@@ -22,12 +22,12 @@ type CustomerDetails struct {
 type FeatureID string
 
 const (
-	FeatureBootstrapOrg          FeatureID = "bootstrap-org"
-	FeatureBigQueryAnalytics     FeatureID = "bigquery-analytics"
-	FeatureDeveloperPortal       FeatureID = "dynamic-developer-portal"
-	FeatureHardenedImageBakery   FeatureID = "hardened-image-bakery"
-	FeatureSecureInferencing     FeatureID = "secure-inferencing"
-	FeatureSkaffoldAppDev        FeatureID = "skaffold-application-development"
+	FeatureBootstrapOrg        FeatureID = "bootstrap-org"
+	FeatureBigQueryAnalytics   FeatureID = "bigquery-analytics"
+	FeatureDeveloperPortal     FeatureID = "dynamic-developer-portal"
+	FeatureHardenedImageBakery FeatureID = "hardened-image-bakery"
+	FeatureSecureInferencing   FeatureID = "secure-inferencing"
+	FeatureSkaffoldAppDev      FeatureID = "skaffold-application-development"
 )
 
 // AllFeatureIDs returns all available feature identifiers.
@@ -51,13 +51,13 @@ type FeatureSelection struct {
 
 // FeatureMetadata describes a feature for UI display and dependency resolution.
 type FeatureMetadata struct {
-	ID          FeatureID  `json:"id"`
-	Name        string     `json:"name"`
-	Description string     `json:"description"`
-	Category    string     `json:"category"`
-	Icon        string     `json:"icon"`
-	Version     string     `json:"version"`
-	Maturity    string     `json:"maturity"` // ga, beta, alpha, stub
+	ID          FeatureID   `json:"id"`
+	Name        string      `json:"name"`
+	Description string      `json:"description"`
+	Category    string      `json:"category"`
+	Icon        string      `json:"icon"`
+	Version     string      `json:"version"`
+	Maturity    string      `json:"maturity"` // ga, beta, alpha, stub
 	DependsOn   []FeatureID `json:"dependsOn,omitempty"`
 }
 

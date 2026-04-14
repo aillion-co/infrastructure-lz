@@ -3,17 +3,17 @@ package models
 // DiscoveryResponse captures the full discovery questionnaire for driving
 // feature recommendations and SOW generation.
 type DiscoveryResponse struct {
-	CustomerInfo    DiscoveryCustomerInfo    `json:"customerInfo,omitempty"`
-	Identity        DiscoveryIdentity        `json:"identity,omitempty"`
-	ResourceMgmt    DiscoveryResourceMgmt    `json:"resourceManagement,omitempty"`
-	Networking      DiscoveryNetworking      `json:"networking,omitempty"`
-	Monitoring      DiscoveryMonitoring      `json:"monitoring,omitempty"`
-	DataMgmt        DiscoveryDataMgmt        `json:"dataManagement,omitempty"`
-	CostControl     DiscoveryCostControl     `json:"costControl,omitempty"`
-	IACCICD         DiscoveryIACCICD         `json:"iacCicd,omitempty"`
-	AIEnablement    DiscoveryAIEnablement    `json:"aiEnablement,omitempty"`
-	Resilience      DiscoveryResilience      `json:"resilience,omitempty"`
-	Security        DiscoverySecurity        `json:"security,omitempty"`
+	CustomerInfo DiscoveryCustomerInfo `json:"customerInfo,omitempty"`
+	Identity     DiscoveryIdentity     `json:"identity,omitempty"`
+	ResourceMgmt DiscoveryResourceMgmt `json:"resourceManagement,omitempty"`
+	Networking   DiscoveryNetworking   `json:"networking,omitempty"`
+	Monitoring   DiscoveryMonitoring   `json:"monitoring,omitempty"`
+	DataMgmt     DiscoveryDataMgmt     `json:"dataManagement,omitempty"`
+	CostControl  DiscoveryCostControl  `json:"costControl,omitempty"`
+	IACCICD      DiscoveryIACCICD      `json:"iacCicd,omitempty"`
+	AIEnablement DiscoveryAIEnablement `json:"aiEnablement,omitempty"`
+	Resilience   DiscoveryResilience   `json:"resilience,omitempty"`
+	Security     DiscoverySecurity     `json:"security,omitempty"`
 }
 
 // DiscoveryCustomerInfo captures basic customer and engagement context.
@@ -21,8 +21,8 @@ type DiscoveryCustomerInfo struct {
 	CustomerName        string `json:"customerName,omitempty"`
 	SecurityContactName string `json:"securityContactName,omitempty"`
 	DataContactName     string `json:"dataContactName,omitempty"`
-	IndustryVertical    string `json:"industryVertical,omitempty"`    // financial-services, public-sector, etc.
-	EngagementType      string `json:"engagementType,omitempty"`     // workload-migration, greenfield-defined, etc.
+	IndustryVertical    string `json:"industryVertical,omitempty"` // financial-services, public-sector, etc.
+	EngagementType      string `json:"engagementType,omitempty"`   // workload-migration, greenfield-defined, etc.
 }
 
 // DiscoveryIdentity captures identity and access management details.
@@ -34,22 +34,22 @@ type DiscoveryIdentity struct {
 
 // DiscoveryResourceMgmt captures org and resource management preferences.
 type DiscoveryResourceMgmt struct {
-	ExistingOrg      bool   `json:"existingOrg"`
+	ExistingOrg       bool   `json:"existingOrg"`
 	FoundationsLayout string `json:"foundationsLayout,omitempty"` // environment-driven, flexible
-	NamingScheme     string `json:"namingScheme,omitempty"`      // obj-env-team-hash, etc.
+	NamingScheme      string `json:"namingScheme,omitempty"`      // obj-env-team-hash, etc.
 }
 
 // DiscoveryNetworking captures network topology and connectivity requirements.
 type DiscoveryNetworking struct {
-	VPCTopology         string   `json:"vpcTopology,omitempty"`         // shared, island, ncc-hub-spoke
-	Interconnect        string   `json:"interconnect,omitempty"`        // none, dedicated, partner, ha-vpn, classic-vpn
-	RFC1918Space        string   `json:"rfc1918Space,omitempty"`        // 10.0.0.0/8, etc.
-	SharedVPCSplit      string   `json:"sharedVpcSplit,omitempty"`      // by-business-unit, by-environment, complex
-	CentralizedIngress  string   `json:"centralizedIngress,omitempty"`  // none, apigee, f5, global-lb, other
-	NetworkAppliances   string   `json:"networkAppliances,omitempty"`   // none, palo-alto, cisco, etc.
-	NameResolution      string   `json:"nameResolution,omitempty"`      // none, dns-forwarding, dns-peering
-	NATGateway          bool     `json:"natGateway"`
-	SecureWebProxy      bool     `json:"secureWebProxy"`
+	VPCTopology        string `json:"vpcTopology,omitempty"`        // shared, island, ncc-hub-spoke
+	Interconnect       string `json:"interconnect,omitempty"`       // none, dedicated, partner, ha-vpn, classic-vpn
+	RFC1918Space       string `json:"rfc1918Space,omitempty"`       // 10.0.0.0/8, etc.
+	SharedVPCSplit     string `json:"sharedVpcSplit,omitempty"`     // by-business-unit, by-environment, complex
+	CentralizedIngress string `json:"centralizedIngress,omitempty"` // none, apigee, f5, global-lb, other
+	NetworkAppliances  string `json:"networkAppliances,omitempty"`  // none, palo-alto, cisco, etc.
+	NameResolution     string `json:"nameResolution,omitempty"`     // none, dns-forwarding, dns-peering
+	NATGateway         bool   `json:"natGateway"`
+	SecureWebProxy     bool   `json:"secureWebProxy"`
 }
 
 // DiscoveryMonitoring captures monitoring and logging preferences.
@@ -65,13 +65,13 @@ type DiscoveryDataMgmt struct {
 
 // DiscoveryCostControl captures billing and budget preferences.
 type DiscoveryCostControl struct {
-	BillingVisibility    string `json:"billingVisibility,omitempty"`    // centrally, by-department
-	BillingExport        string `json:"billingExport,omitempty"`        // looker, no-export, other
-	EnableBillingAlerts  bool   `json:"enableBillingAlerts"`
-	MonthlyBudget        string `json:"monthlyBudget,omitempty"`
-	AlertThresholds      string `json:"alertThresholds,omitempty"`
-	BillingAlertEmail    string `json:"billingAlertEmail,omitempty"`
-	BillingAlertSlack    string `json:"billingAlertSlackWebhook,omitempty"`
+	BillingVisibility   string `json:"billingVisibility,omitempty"` // centrally, by-department
+	BillingExport       string `json:"billingExport,omitempty"`     // looker, no-export, other
+	EnableBillingAlerts bool   `json:"enableBillingAlerts"`
+	MonthlyBudget       string `json:"monthlyBudget,omitempty"`
+	AlertThresholds     string `json:"alertThresholds,omitempty"`
+	BillingAlertEmail   string `json:"billingAlertEmail,omitempty"`
+	BillingAlertSlack   string `json:"billingAlertSlackWebhook,omitempty"`
 }
 
 // DiscoveryIACCICD captures infrastructure-as-code and CI/CD tooling preferences.
@@ -116,12 +116,12 @@ type DiscoverySecurity struct {
 
 // DiscoveryFieldMeta describes a single discovery form field for UI rendering.
 type DiscoveryFieldMeta struct {
-	Key         string                `json:"key"`
-	Label       string                `json:"label"`
-	Type        string                `json:"type"`        // text, select, boolean, multiselect, heading
-	Required    bool                  `json:"required"`
+	Key         string                 `json:"key"`
+	Label       string                 `json:"label"`
+	Type        string                 `json:"type"` // text, select, boolean, multiselect, heading
+	Required    bool                   `json:"required"`
 	Options     []DiscoveryFieldOption `json:"options,omitempty"`
-	VisibleWhen string                `json:"visibleWhen,omitempty"` // conditional visibility expression
+	VisibleWhen string                 `json:"visibleWhen,omitempty"` // conditional visibility expression
 }
 
 // DiscoveryFieldOption is a single option in a select/multiselect field.

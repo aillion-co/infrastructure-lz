@@ -7,9 +7,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/aillion-co/infrastructure-lz/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/aillion-co/infrastructure-lz/internal/models"
 )
 
 func TestHandleDiscoveryEvaluate_BootstrapOrgAlwaysRecommended(t *testing.T) {

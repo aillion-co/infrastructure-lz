@@ -7,10 +7,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/aillion-co/infrastructure-lz/internal/models"
-	"github.com/aillion-co/infrastructure-lz/internal/pricing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/aillion-co/infrastructure-lz/internal/models"
+	"github.com/aillion-co/infrastructure-lz/internal/pricing"
 )
 
 func TestCostEstimateHandler_AllFeatures(t *testing.T) {

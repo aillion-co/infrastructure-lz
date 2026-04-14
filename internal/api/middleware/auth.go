@@ -132,11 +132,16 @@ func validateToken(ctx context.Context, token string) (*UserInfo, error) {
 	defer span.End()
 
 	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get(fmt.Sprintf("https://oauth2.googleapis.com/tokeninfo?id_token=%s", token))
+	url := fmt.Sprintf("https://oauth2.googleapis.com/tokeninfo?id_token=%s", token)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("building token validation request: %w", err)
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("token validation request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("token validation failed with status %d", resp.StatusCode)

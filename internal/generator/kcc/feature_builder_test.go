@@ -20,21 +20,21 @@ func TestFeatureBuilderRegistry_BuildAll(t *testing.T) {
 				FeatureID: models.FeatureBootstrapOrg,
 				Enabled:   true,
 				Config: &models.BootstrapOrgConfig{
-					CustomerName:   "testcorp",
-					WorkloadName:   "web",
-					RootLevel:      "organization",
-					RootID:         "123456789",
-					BillingAccount: "AAAAAA-BBBBBB-CCCCCC",
-					Region:         "europe-west2",
-					Zone:           "europe-west2-a",
-					OrgPolicies:    true,
-					SharedVPC:      true,
+					CustomerName:    "testcorp",
+					WorkloadName:    "web",
+					RootLevel:       "organization",
+					RootID:          "123456789",
+					BillingAccount:  "AAAAAA-BBBBBB-CCCCCC",
+					Region:          "europe-west2",
+					Zone:            "europe-west2-a",
+					OrgPolicies:     true,
+					SharedVPC:       true,
 					ServiceProjects: true,
-					Envs:           "dev,prod",
-					EnvFolders:     true,
-					GKECluster:     true,
-					VCS:            "github",
-					Pipeline:       "cloudbuild",
+					Envs:            "dev,prod",
+					EnvFolders:      true,
+					GKECluster:      true,
+					VCS:             "github",
+					Pipeline:        "cloudbuild",
 				},
 			},
 			{
@@ -122,10 +122,10 @@ func TestBigQueryAnalyticsBuilder_Build(t *testing.T) {
 	builder := NewBigQueryAnalyticsBuilder()
 
 	cfg := &models.BigQueryAnalyticsConfig{
-		ProjectName:    "analytics-test",
-		ProjectID:      "analytics-test-proj",
-		Region:         "europe-west2",
-		DatasetID:      "sales",
+		ProjectName:     "analytics-test",
+		ProjectID:       "analytics-test-proj",
+		Region:          "europe-west2",
+		DatasetID:       "sales",
 		DataViewerGroup: "viewers@example.com",
 	}
 
@@ -189,11 +189,11 @@ func TestSecureInferencingBuilder_Build(t *testing.T) {
 	builder := NewSecureInferencingBuilder()
 
 	cfg := &models.SecureInferencingConfig{
-		ProjectName:    "ai-proxy",
-		ProjectID:      "ai-proxy-project",
-		Region:         "us-central1",
-		EnableGemini:   true,
-		GeminiModel:    "gemini-2.5-pro",
+		ProjectName:        "ai-proxy",
+		ProjectID:          "ai-proxy-project",
+		Region:             "us-central1",
+		EnableGemini:       true,
+		GeminiModel:        "gemini-2.5-pro",
 		EnableAuditLogging: true,
 	}
 
@@ -227,19 +227,19 @@ func TestSkaffoldAppDevBuilder_Build(t *testing.T) {
 	builder := NewSkaffoldAppDevBuilder()
 
 	cfg := &models.SkaffoldAppDevConfig{
-		ProjectName:      "myapp",
-		ServiceName:      "api",
-		Region:           "us-central1",
-		ClusterType:      "standard",
-		MachineType:      "e2-standard-4",
+		ProjectName:       "myapp",
+		ServiceName:       "api",
+		Region:            "us-central1",
+		ClusterType:       "standard",
+		MachineType:       "e2-standard-4",
 		EnableAutoscaling: true,
-		MinNodes:         1,
-		MaxNodes:         5,
-		ReleaseChannel:   "REGULAR",
-		ServicePort:      80,
-		TargetPort:       8080,
-		SQLDB:            "yes",
-		AllowIngress:     "yes",
+		MinNodes:          1,
+		MaxNodes:          5,
+		ReleaseChannel:    "REGULAR",
+		ServicePort:       80,
+		TargetPort:        8080,
+		SQLDB:             "yes",
+		AllowIngress:      "yes",
 	}
 
 	resources, err := builder.Build(cfg)
