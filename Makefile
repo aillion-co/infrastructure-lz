@@ -9,7 +9,6 @@ GO         := go
 GOFLAGS    := -race
 BINARY_DIR := bin
 SERVER_BIN := $(BINARY_DIR)/server
-GEN_BIN    := $(BINARY_DIR)/generator
 MODULE     := github.com/aillion-co/infrastructure-lz
 IMAGE_NAME := iac-generator
 VERSION    := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -24,7 +23,6 @@ LDFLAGS    := -X $(MODULE)/internal/config.Version=$(VERSION) \
 build:
 	@mkdir -p $(BINARY_DIR)
 	CGO_ENABLED=0 $(GO) build -ldflags "$(LDFLAGS)" -o $(SERVER_BIN) ./cmd/server
-	CGO_ENABLED=0 $(GO) build -ldflags "$(LDFLAGS)" -o $(GEN_BIN) ./cmd/generator
 
 run: build
 	$(SERVER_BIN)

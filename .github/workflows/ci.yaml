@@ -145,7 +145,6 @@ jobs:
       - name: Build binaries
         run: |
           CGO_ENABLED=0 go build -o bin/server ./cmd/server
-          CGO_ENABLED=0 go build -o bin/generator ./cmd/generator
 
       - name: Upload binaries
         uses: actions/upload-artifact@v4
