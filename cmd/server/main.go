@@ -39,11 +39,10 @@ func run() error {
 	}
 	defer shutdown(context.Background())
 
-	gen := generator.New()
 	activationGen := generator.NewActivationGenerator()
 
 	pricer := buildPricingProvider(ctx, cfg.PricingProvider)
-	router := api.NewRouter(gen, activationGen, pricer)
+	router := api.NewRouter(activationGen, pricer)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,

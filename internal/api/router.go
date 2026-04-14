@@ -16,16 +16,12 @@ type RouterConfig struct {
 	AllowedDomains []string
 }
 
-func NewRouter(gen *generator.Generator, activationGen *generator.ActivationGenerator, pricer pricing.Provider, cfg ...RouterConfig) http.Handler {
+func NewRouter(activationGen *generator.ActivationGenerator, pricer pricing.Provider, cfg ...RouterConfig) http.Handler {
 	mux := http.NewServeMux()
 
 	// Health checks
 	mux.HandleFunc("GET /healthz", handlers.Healthz)
 	mux.HandleFunc("GET /readyz", handlers.Readyz)
-
-	// Legacy single-project API
-	generateHandler := handlers.NewGenerateHandler(gen)
-	mux.Handle("POST /api/v1/generate", generateHandler)
 
 	// Activation API
 	activateHandler := handlers.NewActivateHandler(activationGen)
@@ -39,7 +35,9 @@ func NewRouter(gen *generator.Generator, activationGen *generator.ActivationGene
 
 	// Web UI
 	webHandler := web.NewHandler()
-	mux.Handle("GET /", webHandler)
+	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/activate", http.StatusFound)
+	})
 	mux.HandleFunc("GET /activate", webHandler.ActivateHandler)
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("internal/web/static"))))
 
