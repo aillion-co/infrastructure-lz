@@ -33,9 +33,8 @@ A Go web application that generates Infrastructure-as-Code configurations for Go
 |--------|------|-------------|
 | `GET` | `/healthz` | Health check |
 | `GET` | `/readyz` | Readiness check |
-| `GET` | `/` | Legacy generator UI |
+| `GET` | `/` | Redirects to `/activate` |
 | `GET` | `/activate` | Activation wizard UI |
-| `POST` | `/api/v1/generate` | Legacy single-project generation |
 | `POST` | `/api/v1/activate` | Generate activation (returns zip) |
 | `GET` | `/api/v1/features` | List available features |
 | `POST` | `/api/v1/cost-estimate` | Estimate monthly GCP costs |

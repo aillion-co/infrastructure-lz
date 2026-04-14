@@ -3,7 +3,9 @@
 package e2e
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -36,62 +38,105 @@ func TestHealthEndpoint(t *testing.T) {
 	}
 }
 
-func TestGenerateEndpoint(t *testing.T) {
-	payload := `{
-		"projectName": "e2e-test",
-		"projectID": "e2e-test-project-123",
-		"region": "us-central1",
-		"environment": "development",
-		"network": {
-			"vpcName": "e2e-vpc",
-			"subnetCIDR": "10.0.0.0/20",
-			"enableNAT": true,
-			"enablePrivate": true
+// TestActivateEndpoint smoke-tests the activation API with a minimal valid
+// bootstrap-org payload.
+func TestActivateEndpoint(t *testing.T) {
+	req := map[string]any{
+		"customer": map[string]any{
+			"customerName": "e2e-smoke",
+			"contactEmail": "e2e@example.com",
+			"contactName":  "E2E",
 		},
-		"iam": {
-			"adminGroup": "admin@example.com"
-		}
-	}`
+		"features": []map[string]any{
+			{
+				"featureId": "bootstrap-org",
+				"enabled":   true,
+				"config": map[string]any{
+					"customerName":   "e2e",
+					"workloadName":   "platform",
+					"rootLevel":      "organization",
+					"rootId":         "123456789012",
+					"billingAccount": "AAAAAA-BBBBBB-CCCCCC",
+					"region":         "us-central1",
+					"envs":           "dev,prod",
+				},
+			},
+		},
+	}
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
 
 	resp, err := http.Post(
-		baseURL()+"/api/v1/generate",
+		baseURL()+"/api/v1/activate",
 		"application/json",
-		strings.NewReader(payload),
+		bytes.NewReader(body),
 	)
 	if err != nil {
-		t.Fatalf("generate request failed: %v", err)
+		t.Fatalf("activate request failed: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("expected 200, got %d", resp.StatusCode)
+		respBody, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(respBody))
 	}
-
 	if ct := resp.Header.Get("Content-Type"); ct != "application/zip" {
 		t.Errorf("expected Content-Type application/zip, got %q", ct)
 	}
 }
 
-func TestGenerateEndpoint_ValidationError(t *testing.T) {
-	payload := `{"projectName": "", "projectID": "BAD", "region": "invalid", "environment": "nope", "network": {"vpcName": "", "subnetCIDR": "bad"}}`
+// TestActivateEndpoint_ValidationError verifies field-level config validation
+// surfaces as HTTP 400 via the kcc.ValidationError path.
+func TestActivateEndpoint_ValidationError(t *testing.T) {
+	req := map[string]any{
+		"customer": map[string]any{
+			"customerName": "e2e-bad",
+			"contactEmail": "e2e@example.com",
+		},
+		"features": []map[string]any{
+			{
+				"featureId": "bootstrap-org",
+				"enabled":   true,
+				"config": map[string]any{
+					"customerName":   "e2e",
+					"workloadName":   "platform",
+					"rootLevel":      "organization",
+					"rootId":         "123456789012",
+					"billingAccount": "AAAAAA-BBBBBB-CCCCCC",
+					"region":         "us-central1",
+					"envs":           "",
+				},
+			},
+		},
+	}
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
 
 	resp, err := http.Post(
-		baseURL()+"/api/v1/generate",
+		baseURL()+"/api/v1/activate",
 		"application/json",
-		strings.NewReader(payload),
+		bytes.NewReader(body),
 	)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusUnprocessableEntity {
-		t.Fatalf("expected 422, got %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusBadRequest {
+		respBody, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected 400, got %d: %s", resp.StatusCode, string(respBody))
 	}
 }
 
+// TestUIEndpoint verifies the wizard page is served at /activate.
 func TestUIEndpoint(t *testing.T) {
-	resp, err := http.Get(baseURL() + "/")
+	resp, err := http.Get(baseURL() + "/activate")
 	if err != nil {
 		t.Fatalf("UI request failed: %v", err)
 	}
@@ -100,7 +145,6 @@ func TestUIEndpoint(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
-
 	if ct := resp.Header.Get("Content-Type"); !strings.Contains(ct, "text/html") {
 		t.Errorf("expected text/html, got %q", ct)
 	}

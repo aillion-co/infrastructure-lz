@@ -1,0 +1,97 @@
+{
+  "customer": {
+    "customerName": "acme",
+    "contactEmail": "platform@acme.example.com",
+    "contactName": "Acme Platform Team"
+  },
+  "features": [
+    {
+      "featureId": "bootstrap-org",
+      "enabled": true,
+      "config": {
+        "customerName": "acme",
+        "workloadName": "platform",
+        "rootLevel": "organization",
+        "rootId": "123456789012",
+        "billingAccount": "AAAAAA-BBBBBB-CCCCCC",
+        "region": "us-central1",
+        "zone": "us-central1-a",
+        "orgPolicies": true,
+        "vpcSc": true,
+        "sharedVpc": true,
+        "serviceProjects": true,
+        "vcs": "github",
+        "vcsOrg": "acme-corp",
+        "pipeline": "cloudbuild",
+        "envs": "dev,test,prod",
+        "envFolders": true,
+        "gkeCluster": true
+      }
+    },
+    {
+      "featureId": "bigquery-analytics",
+      "enabled": true,
+      "config": {
+        "projectName": "acme-analytics",
+        "projectId": "acme-analytics-001",
+        "region": "us-central1",
+        "datasetId": "customer_events",
+        "datasetDescription": "Customer event analytics dataset",
+        "dataViewerGroup": "data-analysts@acme.example.com"
+      }
+    },
+    {
+      "featureId": "dynamic-developer-portal",
+      "enabled": true,
+      "config": {
+        "projectName": "acme-devportal",
+        "gcpProjectId": "acme-devportal-001",
+        "gcpRegion": "us-central1",
+        "gcpNetwork": "shared-vpc",
+        "gcpSubnet": "devportal-subnet",
+        "gitRepoSshUrl": "git@github.com:acme-corp/platform-config.git"
+      }
+    },
+    {
+      "featureId": "hardened-image-bakery",
+      "enabled": true,
+      "config": {
+        "projectName": "acme-bakery",
+        "projectId": "acme-bakery-001",
+        "region": "us-central1",
+        "zone": "us-central1-a",
+        "network": "shared-vpc",
+        "subnetwork": "bakery-subnet",
+        "buildSa": "image-builder",
+        "packerVersion": "1.9.4",
+        "ansibleVersion": "2.15.0"
+      }
+    },
+    {
+      "featureId": "secure-inferencing",
+      "enabled": true,
+      "config": {
+        "projectName": "acme-ai",
+        "projectId": "acme-ai-001",
+        "region": "us-central1",
+        "enableGemini": true,
+        "geminiModel": "gemini-2.0-flash",
+        "enableAuditLogging": true,
+        "enableCostTracking": true
+      }
+    },
+    {
+      "featureId": "skaffold-application-development",
+      "enabled": true,
+      "config": {
+        "projectName": "acme-app",
+        "serviceName": "api",
+        "region": "us-central1",
+        "clusterType": "autopilot",
+        "releaseChannel": "REGULAR",
+        "sqlDb": "no",
+        "allowIngress": "no"
+      }
+    }
+  ]
+}
