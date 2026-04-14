@@ -1,0 +1,31 @@
+{
+  "customer": {
+    "customerName": "acme",
+    "contactEmail": "platform@acme.example.com",
+    "contactName": "Acme Platform Team"
+  },
+  "features": [
+    {
+      "featureId": "bootstrap-org",
+      "enabled": true,
+      "config": {
+        "customerName": "acme",
+        "workloadName": "platform",
+        "rootLevel": "organization",
+        "rootId": "123456789012",
+        "billingAccount": "AAAAAA-BBBBBB-CCCCCC",
+        "region": "us-central1",
+        "zone": "us-central1-a",
+        "orgPolicies": true,
+        "sharedVpc": true,
+        "serviceProjects": true,
+        "vcs": "github",
+        "vcsOrg": "acme-corp",
+        "pipeline": "cloudbuild",
+        "envs": "dev,prod",
+        "envFolders": true,
+        "gkeCluster": true
+      }
+    }
+  ]
+}

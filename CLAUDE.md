@@ -223,7 +223,7 @@ Once a feature is complete and all checks pass, the CI pipeline will:
 
 ### Go Style
 
-- **Go version**: 1.23+
+- **Go version**: 1.25+
 - **Module path**: `github.com/aillion-co/infrastructure-lz`
 - **Error handling**: Always wrap errors with `fmt.Errorf("context: %w", err)`
 - **Naming**: Follow standard Go conventions. No stuttering (`config.Config` not `config.ConfigStruct`)

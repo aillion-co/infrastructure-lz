@@ -33,9 +33,8 @@ A Go web application that generates Infrastructure-as-Code configurations for Go
 |--------|------|-------------|
 | `GET` | `/healthz` | Health check |
 | `GET` | `/readyz` | Readiness check |
-| `GET` | `/` | Legacy generator UI |
+| `GET` | `/` | Redirects to `/activate` |
 | `GET` | `/activate` | Activation wizard UI |
-| `POST` | `/api/v1/generate` | Legacy single-project generation |
 | `POST` | `/api/v1/activate` | Generate activation (returns zip) |
 | `GET` | `/api/v1/features` | List available features |
 | `POST` | `/api/v1/cost-estimate` | Estimate monthly GCP costs |
@@ -46,8 +45,8 @@ A Go web application that generates Infrastructure-as-Code configurations for Go
 
 ## Prerequisites
 
-- **Go 1.23+**
-- **golangci-lint** — `go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.62`
+- **Go 1.25+**
+- **golangci-lint** — `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.5.0`
 - **air** (optional, for hot-reload) — `go install github.com/air-verse/air@latest`
 - **Docker** (for container builds)
 - **Helm v3** (for chart validation)

@@ -6,9 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/aillion-co/infrastructure-lz/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/aillion-co/infrastructure-lz/internal/models"
 )
 
 var update = flag.Bool("update", false, "update golden files")
@@ -35,24 +36,24 @@ func goldenTest(t *testing.T, featureID string, resources []Resource) {
 func TestGolden_BootstrapOrg(t *testing.T) {
 	builder := NewBootstrapOrgBuilder()
 	cfg := &models.BootstrapOrgConfig{
-		CustomerName:   "acme",
-		WorkloadName:   "platform",
-		RootLevel:      "organization",
-		RootID:         "123456789012",
-		BillingAccount: "AAAAAA-BBBBBB-CCCCCC",
-		Region:         "australia-southeast1",
-		Zone:           "australia-southeast1-a",
-		OrgPolicies:    true,
-		VPCSC:          true,
-		SharedVPC:      true,
+		CustomerName:    "acme",
+		WorkloadName:    "platform",
+		RootLevel:       "organization",
+		RootID:          "123456789012",
+		BillingAccount:  "AAAAAA-BBBBBB-CCCCCC",
+		Region:          "australia-southeast1",
+		Zone:            "australia-southeast1-a",
+		OrgPolicies:     true,
+		VPCSC:           true,
+		SharedVPC:       true,
 		ServiceProjects: true,
-		VCS:            "github",
-		VCSOrg:         "acme-corp",
+		VCS:             "github",
+		VCSOrg:          "acme-corp",
 		VCSUsername:     "acme-bot",
-		Pipeline:       "cloudbuild",
-		Envs:           "dev,test,prod",
-		EnvFolders:     true,
-		GKECluster:     true,
+		Pipeline:        "cloudbuild",
+		Envs:            "dev,test,prod",
+		EnvFolders:      true,
+		GKECluster:      true,
 	}
 
 	resources, err := builder.Build(cfg)
@@ -65,17 +66,17 @@ func TestGolden_BootstrapOrg(t *testing.T) {
 func TestGolden_BigQueryAnalytics(t *testing.T) {
 	builder := NewBigQueryAnalyticsBuilder()
 	cfg := &models.BigQueryAnalyticsConfig{
-		ProjectName:            "analytics-proj",
-		ProjectID:              "acme-analytics-prod",
-		Region:                 "us-central1",
-		DatasetID:              "customer_events",
-		DatasetDescription:     "Customer event analytics dataset",
-		DefaultTableExpMS:      "7776000000",
+		ProjectName:             "analytics-proj",
+		ProjectID:               "acme-analytics-prod",
+		Region:                  "us-central1",
+		DatasetID:               "customer_events",
+		DatasetDescription:      "Customer event analytics dataset",
+		DefaultTableExpMS:       "7776000000",
 		DeleteContentsOnDestroy: false,
-		EnableDataTransfer:     true,
-		DataSourceType:         "google_cloud_storage",
-		DataViewerGroup:        "data-analysts@acme.com",
-		EnableScheduledQueries: true,
+		EnableDataTransfer:      true,
+		DataSourceType:          "google_cloud_storage",
+		DataViewerGroup:         "data-analysts@acme.com",
+		EnableScheduledQueries:  true,
 	}
 
 	resources, err := builder.Build(cfg)
@@ -129,18 +130,18 @@ func TestGolden_HardenedImageBakery(t *testing.T) {
 func TestGolden_SecureInferencing(t *testing.T) {
 	builder := NewSecureInferencingBuilder()
 	cfg := &models.SecureInferencingConfig{
-		ProjectName:        "ai-proxy",
-		ProjectID:          "acme-ai-prod",
-		Region:             "us-central1",
-		LiteLLMImage:       "ghcr.io/berriai/litellm:main-v1.35.0",
-		EnableGemini:       true,
-		GeminiModel:        "gemini-2.0-flash",
-		EnableAuditLogging: true,
-		EnableCostTracking: true,
-		CloudRunCPU:        "4",
-		CloudRunMemory:     "2Gi",
+		ProjectName:          "ai-proxy",
+		ProjectID:            "acme-ai-prod",
+		Region:               "us-central1",
+		LiteLLMImage:         "ghcr.io/berriai/litellm:main-v1.35.0",
+		EnableGemini:         true,
+		GeminiModel:          "gemini-2.0-flash",
+		EnableAuditLogging:   true,
+		EnableCostTracking:   true,
+		CloudRunCPU:          "4",
+		CloudRunMemory:       "2Gi",
 		CloudRunMaxInstances: 10,
-		AllowedDomains:     "acme.com,partner.com",
+		AllowedDomains:       "acme.com,partner.com",
 	}
 
 	resources, err := builder.Build(cfg)

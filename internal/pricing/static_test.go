@@ -4,8 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/aillion-co/infrastructure-lz/internal/models"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/aillion-co/infrastructure-lz/internal/models"
 )
 
 // TestStaticProviderMatchesLegacyEstimates pins the static provider to

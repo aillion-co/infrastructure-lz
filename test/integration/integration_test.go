@@ -27,10 +27,19 @@ func httpClient() *http.Client {
 	return &http.Client{Timeout: 30 * time.Second}
 }
 
+// noFollowClient returns an HTTP client that does not follow redirects, so
+// tests can inspect 30x responses directly.
+func noFollowClient() *http.Client {
+	c := httpClient()
+	c.CheckRedirect = func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+	return c
+}
+
 // TestHealthz verifies the health endpoint returns a healthy status.
 func TestHealthz(t *testing.T) {
-	client := httpClient()
-	resp, err := client.Get(baseURL() + "/healthz")
+	resp, err := httpClient().Get(baseURL() + "/healthz")
 	if err != nil {
 		t.Fatalf("healthz request failed: %v", err)
 	}
@@ -52,8 +61,7 @@ func TestHealthz(t *testing.T) {
 
 // TestReadyz verifies the readiness endpoint.
 func TestReadyz(t *testing.T) {
-	client := httpClient()
-	resp, err := client.Get(baseURL() + "/readyz")
+	resp, err := httpClient().Get(baseURL() + "/readyz")
 	if err != nil {
 		t.Fatalf("readyz request failed: %v", err)
 	}
@@ -64,191 +72,167 @@ func TestReadyz(t *testing.T) {
 	}
 }
 
-// TestGenerate_BasicProject generates a basic project and validates the zip contents.
-func TestGenerate_BasicProject(t *testing.T) {
-	payload := `{
-		"projectName": "integ-basic",
-		"projectID": "integ-basic-project-001",
-		"region": "us-central1",
-		"environment": "development",
-		"network": {
-			"vpcName": "integ-vpc",
-			"subnetCIDR": "10.0.0.0/20",
-			"enableNAT": true,
-			"enablePrivate": true
-		},
-		"iam": {
-			"adminGroup": "admin@example.com"
-		}
-	}`
+// TestActivate_BootstrapOrgOnly generates an activation containing only the
+// foundational bootstrap-org feature and validates the resulting umbrella
+// Helm chart.
+func TestActivate_BootstrapOrgOnly(t *testing.T) {
+	req := newActivationRequest("integ-bootstrap", []map[string]any{
+		bootstrapOrgFeature(true, validBootstrapOrgConfig()),
+	})
 
-	zipData := doGenerate(t, payload)
-	assertValidHelmChart(t, zipData, "integ-basic")
+	zipData := doActivate(t, req)
+	assertValidUmbrellaChart(t, zipData, "integ-bootstrap", []string{"bootstrap-org"})
 }
 
-// TestGenerate_GKEProject generates a project with GKE config and validates KCC resources.
-func TestGenerate_GKEProject(t *testing.T) {
-	payload := `{
-		"projectName": "integ-gke",
-		"projectID": "integ-gke-project-001",
-		"region": "us-central1",
-		"environment": "staging",
-		"network": {
-			"vpcName": "integ-gke-vpc",
-			"subnetCIDR": "10.1.0.0/20",
-			"podCIDR": "10.64.0.0/14",
-			"serviceCIDR": "10.68.0.0/20",
-			"enableNAT": true,
-			"enablePrivate": true
+// TestActivate_AllFeatures enables all six features with valid config and
+// asserts the resulting zip contains a sub-chart per feature plus the expected
+// KCC kinds.
+func TestActivate_AllFeatures(t *testing.T) {
+	req := newActivationRequest("integ-full", []map[string]any{
+		bootstrapOrgFeature(true, validBootstrapOrgConfig()),
+		{
+			"featureId": "bigquery-analytics",
+			"enabled":   true,
+			"config": map[string]any{
+				"projectName":     "integ-bq",
+				"projectId":       "integ-bq-001",
+				"region":          "us-central1",
+				"datasetId":       "integ_events",
+				"dataViewerGroup": "viewers@example.com",
+			},
 		},
-		"gke": {
-			"clusterName": "integ-cluster",
-			"nodeCount": 3,
-			"machineType": "e2-standard-4",
-			"enableAutoscaling": true,
-			"minNodes": 1,
-			"maxNodes": 5
+		{
+			"featureId": "dynamic-developer-portal",
+			"enabled":   true,
+			"config": map[string]any{
+				"projectName":   "integ-portal",
+				"gcpProjectId":  "integ-portal-001",
+				"gcpRegion":     "us-central1",
+				"gcpNetwork":    "shared-vpc",
+				"gcpSubnet":     "portal-subnet",
+				"gitRepoSshUrl": "git@github.com:integ/config.git",
+			},
 		},
-		"iam": {
-			"adminGroup": "admin@example.com",
-			"viewerGroup": "viewers@example.com"
-		}
-	}`
+		{
+			"featureId": "hardened-image-bakery",
+			"enabled":   true,
+			"config": map[string]any{
+				"projectName":    "integ-bakery",
+				"projectId":      "integ-bakery-001",
+				"region":         "us-central1",
+				"zone":           "us-central1-a",
+				"network":        "shared-vpc",
+				"subnetwork":     "bakery-subnet",
+				"buildSa":        "image-builder",
+				"packerVersion":  "1.9.4",
+				"ansibleVersion": "2.15.0",
+			},
+		},
+		{
+			"featureId": "secure-inferencing",
+			"enabled":   true,
+			"config": map[string]any{
+				"projectName":        "integ-ai",
+				"projectId":          "integ-ai-001",
+				"region":             "us-central1",
+				"enableGemini":       true,
+				"geminiModel":        "gemini-2.0-flash",
+				"enableAuditLogging": true,
+			},
+		},
+		{
+			"featureId": "skaffold-application-development",
+			"enabled":   true,
+			"config": map[string]any{
+				"projectName":    "integ-app",
+				"serviceName":    "api",
+				"region":         "us-central1",
+				"clusterType":    "autopilot",
+				"releaseChannel": "REGULAR",
+				"sqlDb":          "no",
+				"allowIngress":   "no",
+			},
+		},
+	})
 
-	zipData := doGenerate(t, payload)
-	assertValidHelmChart(t, zipData, "integ-gke")
-	assertZipContains(t, zipData, "containercluster")
+	zipData := doActivate(t, req)
+	assertValidUmbrellaChart(t, zipData, "integ-full", []string{
+		"bootstrap-org",
+		"bigquery-analytics",
+		"dynamic-developer-portal",
+		"hardened-image-bakery",
+		"secure-inferencing",
+		"skaffold-application-development",
+	})
+
+	// Sanity-check that signature KCC kinds end up in the templates of each
+	// sub-chart.
+	assertZipContains(t, zipData, "BigQueryDataset")
+	assertZipContains(t, zipData, "ContainerCluster")
+	assertZipContains(t, zipData, "RunService")
 }
 
-// TestGenerate_CloudSQLProject generates a project with CloudSQL and validates output.
-func TestGenerate_CloudSQLProject(t *testing.T) {
-	payload := `{
-		"projectName": "integ-sql",
-		"projectID": "integ-sql-project-001",
-		"region": "us-central1",
-		"environment": "production",
-		"network": {
-			"vpcName": "integ-sql-vpc",
-			"subnetCIDR": "10.2.0.0/20",
-			"enableNAT": false,
-			"enablePrivate": false
-		},
-		"cloudSQL": {
-			"instanceName": "integ-db",
-			"databaseVersion": "POSTGRES_15",
-			"tier": "db-custom-2-8192",
-			"enableHA": true
-		},
-		"iam": {
-			"adminGroup": "admin@example.com"
-		}
-	}`
+// TestActivate_FeatureValidationError exercises the ValidationError -> HTTP 400
+// path. An empty envs string triggers bootstrap-org's required-field validator.
+func TestActivate_FeatureValidationError(t *testing.T) {
+	cfg := validBootstrapOrgConfig()
+	cfg["envs"] = ""
 
-	zipData := doGenerate(t, payload)
-	assertValidHelmChart(t, zipData, "integ-sql")
-	assertZipContains(t, zipData, "sqlinstance")
-}
+	req := newActivationRequest("integ-bad-envs", []map[string]any{
+		bootstrapOrgFeature(true, cfg),
+	})
 
-// TestGenerate_FullProject generates a project with all options enabled.
-func TestGenerate_FullProject(t *testing.T) {
-	payload := `{
-		"projectName": "integ-full",
-		"projectID": "integ-full-project-001",
-		"region": "europe-west1",
-		"environment": "production",
-		"network": {
-			"vpcName": "integ-full-vpc",
-			"subnetCIDR": "10.3.0.0/20",
-			"podCIDR": "10.72.0.0/14",
-			"serviceCIDR": "10.76.0.0/20",
-			"enableNAT": true,
-			"enablePrivate": true
-		},
-		"gke": {
-			"clusterName": "integ-full-cluster",
-			"nodeCount": 3,
-			"machineType": "e2-standard-8",
-			"enableAutoscaling": true,
-			"minNodes": 3,
-			"maxNodes": 10
-		},
-		"cloudSQL": {
-			"instanceName": "integ-full-db",
-			"databaseVersion": "POSTGRES_15",
-			"tier": "db-custom-4-16384",
-			"enableHA": true
-		},
-		"iam": {
-			"adminGroup": "admin@example.com",
-			"viewerGroup": "viewers@example.com"
-		}
-	}`
+	resp := postActivate(t, req)
+	defer resp.Body.Close()
 
-	zipData := doGenerate(t, payload)
-	assertValidHelmChart(t, zipData, "integ-full")
-	assertZipContains(t, zipData, "containercluster")
-	assertZipContains(t, zipData, "sqlinstance")
-}
-
-// TestGenerate_ValidationErrors verifies that invalid input returns 422 with error details.
-func TestGenerate_ValidationErrors(t *testing.T) {
-	tests := []struct {
-		name    string
-		payload string
-	}{
-		{
-			name:    "empty project ID",
-			payload: `{"projectName":"test","projectID":"","region":"us-central1","environment":"development","network":{"vpcName":"v","subnetCIDR":"10.0.0.0/20"}}`,
-		},
-		{
-			name:    "invalid region",
-			payload: `{"projectName":"test","projectID":"valid-project-123","region":"invalid","environment":"development","network":{"vpcName":"v","subnetCIDR":"10.0.0.0/20"}}`,
-		},
-		{
-			name:    "invalid environment",
-			payload: `{"projectName":"test","projectID":"valid-project-123","region":"us-central1","environment":"nope","network":{"vpcName":"v","subnetCIDR":"10.0.0.0/20"}}`,
-		},
-		{
-			name:    "invalid CIDR",
-			payload: `{"projectName":"test","projectID":"valid-project-123","region":"us-central1","environment":"development","network":{"vpcName":"v","subnetCIDR":"bad"}}`,
-		},
+	if resp.StatusCode != http.StatusBadRequest {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected 400, got %d: %s", resp.StatusCode, string(body))
 	}
 
-	client := httpClient()
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			resp, err := client.Post(
-				baseURL()+"/api/v1/generate",
-				"application/json",
-				strings.NewReader(tc.payload),
-			)
-			if err != nil {
-				t.Fatalf("request failed: %v", err)
-			}
-			defer resp.Body.Close()
-
-			if resp.StatusCode != http.StatusUnprocessableEntity {
-				body, _ := io.ReadAll(resp.Body)
-				t.Fatalf("expected 422, got %d: %s", resp.StatusCode, string(body))
-			}
-
-			var errResp map[string]any
-			if err := json.NewDecoder(resp.Body).Decode(&errResp); err != nil {
-				t.Fatalf("failed to decode error response: %v", err)
-			}
-
-			if _, ok := errResp["errors"]; !ok {
-				t.Error("expected 'errors' key in response")
-			}
-		})
+	var body map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode error response: %v", err)
+	}
+	if body["feature"] != "bootstrap-org" {
+		t.Errorf("expected feature bootstrap-org, got %v", body["feature"])
+	}
+	if body["field"] != "envs" {
+		t.Errorf("expected field envs, got %v", body["field"])
+	}
+	if _, ok := body["error"]; !ok {
+		t.Error("expected 'error' key in response")
 	}
 }
 
-// TestGenerate_BadJSON verifies that malformed JSON returns 400.
-func TestGenerate_BadJSON(t *testing.T) {
-	client := httpClient()
-	resp, err := client.Post(
-		baseURL()+"/api/v1/generate",
+// TestActivate_RequestValidationError exercises the request-level validator
+// (no enabled features) which returns 422.
+func TestActivate_RequestValidationError(t *testing.T) {
+	req := newActivationRequest("integ-empty", []map[string]any{
+		bootstrapOrgFeature(false, validBootstrapOrgConfig()),
+	})
+
+	resp := postActivate(t, req)
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected 422, got %d: %s", resp.StatusCode, string(body))
+	}
+
+	var body map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode error response: %v", err)
+	}
+	if _, ok := body["errors"]; !ok {
+		t.Error("expected 'errors' key in 422 response")
+	}
+}
+
+// TestActivate_BadJSON verifies that malformed JSON returns 400.
+func TestActivate_BadJSON(t *testing.T) {
+	resp, err := httpClient().Post(
+		baseURL()+"/api/v1/activate",
 		"application/json",
 		strings.NewReader(`{not valid json`),
 	)
@@ -262,114 +246,87 @@ func TestGenerate_BadJSON(t *testing.T) {
 	}
 }
 
-// TestGenerate_ConcurrentRequests validates the server handles concurrent generation requests.
-func TestGenerate_ConcurrentRequests(t *testing.T) {
-	payload := `{
-		"projectName": "integ-concurrent-%d",
-		"projectID": "integ-concurrent-%d",
-		"region": "us-central1",
-		"environment": "development",
-		"network": {
-			"vpcName": "conc-vpc",
-			"subnetCIDR": "10.0.0.0/20",
-			"enableNAT": true,
-			"enablePrivate": true
-		},
-		"iam": {
-			"adminGroup": "admin@example.com"
-		}
-	}`
-
+// TestActivate_ConcurrentRequests validates the server handles concurrent
+// activation requests without races or zip corruption.
+func TestActivate_ConcurrentRequests(t *testing.T) {
 	const concurrency = 5
 	var wg sync.WaitGroup
-	errors := make(chan error, concurrency)
+	errCh := make(chan error, concurrency)
 
 	for i := 0; i < concurrency; i++ {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
-			p := fmt.Sprintf(payload, idx, idx)
-			client := httpClient()
-			resp, err := client.Post(
-				baseURL()+"/api/v1/generate",
+			req := newActivationRequest(
+				fmt.Sprintf("integ-conc-%d", idx),
+				[]map[string]any{bootstrapOrgFeature(true, validBootstrapOrgConfig())},
+			)
+			body, err := json.Marshal(req)
+			if err != nil {
+				errCh <- fmt.Errorf("request %d marshal: %w", idx, err)
+				return
+			}
+			resp, err := httpClient().Post(
+				baseURL()+"/api/v1/activate",
 				"application/json",
-				strings.NewReader(p),
+				bytes.NewReader(body),
 			)
 			if err != nil {
-				errors <- fmt.Errorf("request %d failed: %w", idx, err)
+				errCh <- fmt.Errorf("request %d post: %w", idx, err)
 				return
 			}
 			defer resp.Body.Close()
 
 			if resp.StatusCode != http.StatusOK {
-				body, _ := io.ReadAll(resp.Body)
-				errors <- fmt.Errorf("request %d: expected 200, got %d: %s", idx, resp.StatusCode, string(body))
+				b, _ := io.ReadAll(resp.Body)
+				errCh <- fmt.Errorf("request %d: expected 200, got %d: %s", idx, resp.StatusCode, string(b))
 				return
 			}
-
 			data, err := io.ReadAll(resp.Body)
 			if err != nil {
-				errors <- fmt.Errorf("request %d: failed to read body: %w", idx, err)
+				errCh <- fmt.Errorf("request %d read: %w", idx, err)
 				return
 			}
-
 			if _, err := zip.NewReader(bytes.NewReader(data), int64(len(data))); err != nil {
-				errors <- fmt.Errorf("request %d: invalid zip: %w", idx, err)
+				errCh <- fmt.Errorf("request %d invalid zip: %w", idx, err)
 			}
 		}(i)
 	}
 
 	wg.Wait()
-	close(errors)
+	close(errCh)
 
-	for err := range errors {
+	for err := range errCh {
 		t.Error(err)
 	}
 }
 
-// TestGenerate_ResponseHeaders verifies correct headers on the zip response.
-func TestGenerate_ResponseHeaders(t *testing.T) {
-	payload := `{
-		"projectName": "integ-headers",
-		"projectID": "integ-headers-project-001",
-		"region": "us-central1",
-		"environment": "development",
-		"network": {
-			"vpcName": "headers-vpc",
-			"subnetCIDR": "10.0.0.0/20",
-			"enableNAT": true,
-			"enablePrivate": true
-		},
-		"iam": {
-			"adminGroup": "admin@example.com"
-		}
-	}`
+// TestActivate_ResponseHeaders verifies the Content-Type and
+// Content-Disposition headers on the zip response.
+func TestActivate_ResponseHeaders(t *testing.T) {
+	req := newActivationRequest("integ-headers", []map[string]any{
+		bootstrapOrgFeature(true, validBootstrapOrgConfig()),
+	})
 
-	client := httpClient()
-	resp, err := client.Post(
-		baseURL()+"/api/v1/generate",
-		"application/json",
-		strings.NewReader(payload),
-	)
-	if err != nil {
-		t.Fatalf("request failed: %v", err)
-	}
+	resp := postActivate(t, req)
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(body))
+	}
 	if ct := resp.Header.Get("Content-Type"); ct != "application/zip" {
 		t.Errorf("expected Content-Type application/zip, got %q", ct)
 	}
-
 	cd := resp.Header.Get("Content-Disposition")
-	if !strings.Contains(cd, "integ-headers-iac.zip") {
-		t.Errorf("expected Content-Disposition with integ-headers-iac.zip, got %q", cd)
+	if !strings.Contains(cd, "integ-headers-activation.zip") {
+		t.Errorf("expected Content-Disposition with integ-headers-activation.zip, got %q", cd)
 	}
 }
 
-// TestWebUI verifies the web UI serves HTML.
-func TestWebUI(t *testing.T) {
-	client := httpClient()
-	resp, err := client.Get(baseURL() + "/")
+// TestWebUI_Activate verifies the wizard page is served at /activate.
+func TestWebUI_Activate(t *testing.T) {
+	resp, err := httpClient().Get(baseURL() + "/activate")
 	if err != nil {
 		t.Fatalf("UI request failed: %v", err)
 	}
@@ -378,51 +335,161 @@ func TestWebUI(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
-
-	ct := resp.Header.Get("Content-Type")
-	if !strings.Contains(ct, "text/html") {
+	if ct := resp.Header.Get("Content-Type"); !strings.Contains(ct, "text/html") {
 		t.Errorf("expected text/html, got %q", ct)
 	}
-
 	body, _ := io.ReadAll(resp.Body)
-	if !strings.Contains(string(body), "IAC Generator") && !strings.Contains(string(body), "iac-generator") && !strings.Contains(string(body), "<form") {
-		t.Error("UI response does not contain expected HTML content")
+	lower := strings.ToLower(string(body))
+	if !strings.Contains(lower, "activation") && !strings.Contains(lower, "<form") {
+		t.Error("activate page does not contain expected HTML content")
+	}
+}
+
+// TestWebUI_RootRedirects verifies GET / redirects to /activate.
+func TestWebUI_RootRedirects(t *testing.T) {
+	resp, err := noFollowClient().Get(baseURL() + "/")
+	if err != nil {
+		t.Fatalf("root request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusFound && resp.StatusCode != http.StatusMovedPermanently {
+		t.Fatalf("expected redirect, got %d", resp.StatusCode)
+	}
+	if loc := resp.Header.Get("Location"); loc != "/activate" {
+		t.Errorf("expected Location: /activate, got %q", loc)
+	}
+}
+
+// TestFeatures_API confirms the feature registry endpoint returns the six
+// known features.
+func TestFeatures_API(t *testing.T) {
+	resp, err := httpClient().Get(baseURL() + "/api/v1/features")
+	if err != nil {
+		t.Fatalf("features request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+
+	var features []map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&features); err != nil {
+		t.Fatalf("failed to decode features: %v", err)
+	}
+
+	expected := map[string]bool{
+		"bootstrap-org":                    false,
+		"bigquery-analytics":               false,
+		"dynamic-developer-portal":         false,
+		"hardened-image-bakery":            false,
+		"secure-inferencing":               false,
+		"skaffold-application-development": false,
+	}
+	for _, f := range features {
+		id, _ := f["id"].(string)
+		if _, ok := expected[id]; ok {
+			expected[id] = true
+		}
+	}
+	for id, found := range expected {
+		if !found {
+			t.Errorf("missing feature %q in registry response", id)
+		}
 	}
 }
 
 // --- helpers ---
 
-func doGenerate(t *testing.T, payload string) []byte {
+func newActivationRequest(customer string, features []map[string]any) map[string]any {
+	return map[string]any{
+		"customer": map[string]any{
+			"customerName": customer,
+			"contactEmail": "integ@example.com",
+			"contactName":  "Integration Test",
+		},
+		"features": features,
+	}
+}
+
+func validBootstrapOrgConfig() map[string]any {
+	return map[string]any{
+		"customerName":    "integtest",
+		"workloadName":    "platform",
+		"rootLevel":       "organization",
+		"rootId":          "123456789012",
+		"billingAccount":  "AAAAAA-BBBBBB-CCCCCC",
+		"region":          "us-central1",
+		"zone":            "us-central1-a",
+		"orgPolicies":     true,
+		"sharedVpc":       true,
+		"serviceProjects": true,
+		"vcs":             "github",
+		"vcsOrg":          "integ-corp",
+		"pipeline":        "cloudbuild",
+		"envs":            "dev,prod",
+		"envFolders":      true,
+		"gkeCluster":      true,
+	}
+}
+
+func bootstrapOrgFeature(enabled bool, cfg map[string]any) map[string]any {
+	return map[string]any{
+		"featureId": "bootstrap-org",
+		"enabled":   enabled,
+		"config":    cfg,
+	}
+}
+
+func postActivate(t *testing.T, req map[string]any) *http.Response {
 	t.Helper()
-	client := httpClient()
-	resp, err := client.Post(
-		baseURL()+"/api/v1/generate",
+	body, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("marshal request: %v", err)
+	}
+	resp, err := httpClient().Post(
+		baseURL()+"/api/v1/activate",
 		"application/json",
-		strings.NewReader(payload),
+		bytes.NewReader(body),
 	)
 	if err != nil {
-		t.Fatalf("generate request failed: %v", err)
+		t.Fatalf("activate request failed: %v", err)
 	}
+	return resp
+}
+
+func doActivate(t *testing.T, req map[string]any) []byte {
+	t.Helper()
+	resp := postActivate(t, req)
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(body))
 	}
-
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatalf("failed to read response: %v", err)
 	}
-
 	if len(data) == 0 {
 		t.Fatal("empty response body")
 	}
-
 	return data
 }
 
-func assertValidHelmChart(t *testing.T, zipData []byte, projectName string) {
+// assertValidUmbrellaChart inspects the activation zip and verifies it
+// contains a valid Helm umbrella chart structure with the expected sub-charts.
+//
+// Expected layout (per internal/generator/helm/activation_builder.go):
+//
+//	<customer>-activation/Chart.yaml
+//	<customer>-activation/values.yaml
+//	<customer>-activation/charts/<feature-id>/Chart.yaml
+//	<customer>-activation/charts/<feature-id>/values.yaml
+//	<customer>-activation/charts/<feature-id>/templates/_helpers.tpl
+//	<customer>-activation/charts/<feature-id>/templates/<resource>.yaml
+func assertValidUmbrellaChart(t *testing.T, zipData []byte, customer string, expectedFeatures []string) {
 	t.Helper()
 
 	r, err := zip.NewReader(bytes.NewReader(zipData), int64(len(zipData)))
@@ -430,34 +497,54 @@ func assertValidHelmChart(t *testing.T, zipData []byte, projectName string) {
 		t.Fatalf("invalid zip: %v", err)
 	}
 
-	requiredFiles := map[string]bool{
-		"Chart.yaml":  false,
-		"values.yaml": false,
+	chartRoot := customer + "-activation"
+	requiredTop := map[string]bool{
+		chartRoot + "/Chart.yaml":  false,
+		chartRoot + "/values.yaml": false,
 	}
+	subCharts := make(map[string]bool, len(expectedFeatures))
+	for _, fid := range expectedFeatures {
+		subCharts[fid] = false
+	}
+	subChartTemplates := make(map[string]bool, len(expectedFeatures))
 
-	hasTemplates := false
 	for _, f := range r.File {
-		for req := range requiredFiles {
-			if strings.HasSuffix(f.Name, req) {
-				requiredFiles[req] = true
+		if _, ok := requiredTop[f.Name]; ok {
+			requiredTop[f.Name] = true
+			continue
+		}
+		for fid := range subCharts {
+			prefix := chartRoot + "/charts/" + fid + "/"
+			if !strings.HasPrefix(f.Name, prefix) {
+				continue
+			}
+			rest := strings.TrimPrefix(f.Name, prefix)
+			if rest == "Chart.yaml" {
+				subCharts[fid] = true
+			}
+			if strings.HasPrefix(rest, "templates/") && strings.HasSuffix(rest, ".yaml") {
+				subChartTemplates[fid] = true
 			}
 		}
-		if strings.Contains(f.Name, "templates/") {
-			hasTemplates = true
-		}
 	}
 
-	for name, found := range requiredFiles {
+	for path, found := range requiredTop {
 		if !found {
-			t.Errorf("required file %q not found in zip", name)
+			t.Errorf("required umbrella file %q not found in zip", path)
 		}
 	}
-
-	if !hasTemplates {
-		t.Error("no templates/ directory found in zip")
+	for fid, found := range subCharts {
+		if !found {
+			t.Errorf("expected sub-chart %q Chart.yaml not found", fid)
+		}
+		if !subChartTemplates[fid] {
+			t.Errorf("expected sub-chart %q to contain at least one templates/*.yaml", fid)
+		}
 	}
 }
 
+// assertZipContains scans every file in the zip and fails if no file's
+// content contains the given substring.
 func assertZipContains(t *testing.T, zipData []byte, substring string) {
 	t.Helper()
 
@@ -467,20 +554,16 @@ func assertZipContains(t *testing.T, zipData []byte, substring string) {
 	}
 
 	for _, f := range r.File {
-		if strings.Contains(strings.ToLower(f.Name), substring) {
-			return
-		}
-		// Also check file contents
 		rc, err := f.Open()
 		if err != nil {
 			continue
 		}
 		data, _ := io.ReadAll(rc)
 		rc.Close()
-		if strings.Contains(strings.ToLower(string(data)), substring) {
+		if strings.Contains(string(data), substring) {
 			return
 		}
 	}
 
-	t.Errorf("zip does not contain any file or content matching %q", substring)
+	t.Errorf("zip does not contain any file with content matching %q", substring)
 }

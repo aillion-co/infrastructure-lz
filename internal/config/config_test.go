@@ -1,7 +1,6 @@
 package config_test
 
 import (
-	"os"
 	"testing"
 
 	"github.com/aillion-co/infrastructure-lz/internal/config"
@@ -23,12 +22,8 @@ func TestLoad_Defaults(t *testing.T) {
 }
 
 func TestLoad_CustomValues(t *testing.T) {
-	os.Setenv("PORT", "9090")
-	os.Setenv("LOG_LEVEL", "debug")
-	defer func() {
-		os.Unsetenv("PORT")
-		os.Unsetenv("LOG_LEVEL")
-	}()
+	t.Setenv("PORT", "9090")
+	t.Setenv("LOG_LEVEL", "debug")
 
 	cfg, err := config.Load()
 	if err != nil {
@@ -45,8 +40,7 @@ func TestLoad_CustomValues(t *testing.T) {
 }
 
 func TestLoad_InvalidLogLevel(t *testing.T) {
-	os.Setenv("LOG_LEVEL", "invalid")
-	defer os.Unsetenv("LOG_LEVEL")
+	t.Setenv("LOG_LEVEL", "invalid")
 
 	_, err := config.Load()
 	if err == nil {

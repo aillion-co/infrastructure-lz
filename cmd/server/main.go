@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -37,7 +38,11 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("setting up telemetry: %w", err)
 	}
-	defer shutdown(context.Background())
+	defer func() {
+		if err := shutdown(context.Background()); err != nil {
+			slog.Warn("telemetry shutdown failed", "error", err)
+		}
+	}()
 
 	activationGen := generator.NewActivationGenerator()
 
@@ -60,7 +65,7 @@ func run() error {
 
 	select {
 	case err := <-errCh:
-		if err != http.ErrServerClosed {
+		if !errors.Is(err, http.ErrServerClosed) {
 			return fmt.Errorf("server error: %w", err)
 		}
 	case <-ctx.Done():
