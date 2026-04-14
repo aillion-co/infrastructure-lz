@@ -66,18 +66,27 @@ func (b *skaffoldAppDevBuilder) Build(config interface{}) ([]Resource, error) {
 }
 
 func toSkaffoldAppDevConfig(config interface{}) (*models.SkaffoldAppDevConfig, error) {
-	if cfg, ok := config.(*models.SkaffoldAppDevConfig); ok {
-		return cfg, nil
+	cfg, ok := config.(*models.SkaffoldAppDevConfig)
+	if !ok {
+		data, err := json.Marshal(config)
+		if err != nil {
+			return nil, fmt.Errorf("marshalling skaffold-app-dev config: %w", err)
+		}
+		cfg = &models.SkaffoldAppDevConfig{}
+		if err := json.Unmarshal(data, cfg); err != nil {
+			return nil, fmt.Errorf("unmarshalling skaffold-app-dev config: %w", err)
+		}
 	}
-	data, err := json.Marshal(config)
-	if err != nil {
-		return nil, fmt.Errorf("marshalling skaffold-app-dev config: %w", err)
+	if cfg.ProjectName == "" {
+		return nil, newValidationError("skaffold-application-development", "projectName", "is required")
 	}
-	var cfg models.SkaffoldAppDevConfig
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("unmarshalling skaffold-app-dev config: %w", err)
+	if cfg.ServiceName == "" {
+		return nil, newValidationError("skaffold-application-development", "serviceName", "is required")
 	}
-	return &cfg, nil
+	if cfg.Region == "" {
+		return nil, newValidationError("skaffold-application-development", "region", "is required")
+	}
+	return cfg, nil
 }
 
 const appdevGKE = `apiVersion: container.cnrm.cloud.google.com/v1beta1
@@ -86,7 +95,7 @@ metadata:
   name: {{ .ProjectName }}-cluster
   namespace: config-connector
 spec:
-  location: {{ default "us-central1" .ClusterTopology }}
+  location: {{ .Region }}
 {{- if eq .ClusterType "autopilot" }}
   enableAutopilot: true
 {{- else }}
@@ -110,7 +119,7 @@ metadata:
   name: {{ .ProjectName }}-pool
   namespace: config-connector
 spec:
-  location: {{ default "us-central1" .ClusterTopology }}
+  location: {{ .Region }}
   clusterRef:
     name: {{ .ProjectName }}-cluster
   initialNodeCount: {{ if .InitialNodeCount }}{{ .InitialNodeCount }}{{ else }}3{{ end }}
@@ -271,7 +280,7 @@ metadata:
   namespace: config-connector
 spec:
   databaseVersion: POSTGRES_15
-  region: us-central1
+  region: {{ .Region }}
   settings:
     tier: db-custom-2-8192
     availabilityType: REGIONAL

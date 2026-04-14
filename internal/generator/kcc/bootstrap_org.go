@@ -3,6 +3,7 @@ package kcc
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/aillion-co/infrastructure-lz/internal/models"
 )
@@ -93,18 +94,49 @@ func (b *bootstrapOrgBuilder) Build(config interface{}) ([]Resource, error) {
 }
 
 func toBootstrapOrgConfig(config interface{}) (*models.BootstrapOrgConfig, error) {
-	if cfg, ok := config.(*models.BootstrapOrgConfig); ok {
-		return cfg, nil
+	cfg, ok := config.(*models.BootstrapOrgConfig)
+	if !ok {
+		data, err := json.Marshal(config)
+		if err != nil {
+			return nil, fmt.Errorf("marshalling bootstrap-org config: %w", err)
+		}
+		cfg = &models.BootstrapOrgConfig{}
+		if err := json.Unmarshal(data, cfg); err != nil {
+			return nil, fmt.Errorf("unmarshalling bootstrap-org config: %w", err)
+		}
 	}
-	data, err := json.Marshal(config)
-	if err != nil {
-		return nil, fmt.Errorf("marshalling bootstrap-org config: %w", err)
+	cfg.Envs = strings.TrimSpace(cfg.Envs)
+	if cfg.CustomerName == "" {
+		return nil, newValidationError("bootstrap-org", "customerName", "is required")
 	}
-	var cfg models.BootstrapOrgConfig
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("unmarshalling bootstrap-org config: %w", err)
+	if cfg.WorkloadName == "" {
+		return nil, newValidationError("bootstrap-org", "workloadName", "is required")
 	}
-	return &cfg, nil
+	if cfg.RootLevel != "organization" && cfg.RootLevel != "folder" {
+		return nil, newValidationError("bootstrap-org", "rootLevel", "must be \"organization\" or \"folder\"")
+	}
+	if cfg.RootID == "" {
+		return nil, newValidationError("bootstrap-org", "rootId", "is required")
+	}
+	if cfg.BillingAccount == "" {
+		return nil, newValidationError("bootstrap-org", "billingAccount", "is required")
+	}
+	if cfg.Region == "" {
+		return nil, newValidationError("bootstrap-org", "region", "is required")
+	}
+	if cfg.Envs == "" {
+		return nil, newValidationError("bootstrap-org", "envs", "is required (provide a comma-separated list of environment names, e.g. \"dev,test,prod\")")
+	}
+	if cfg.OrgPolicies && cfg.RootLevel != "organization" {
+		return nil, newValidationError("bootstrap-org", "orgPolicies", "requires rootLevel \"organization\"")
+	}
+	if cfg.VPCSC && cfg.RootLevel != "organization" {
+		return nil, newValidationError("bootstrap-org", "vpcSc", "requires rootLevel \"organization\"")
+	}
+	if cfg.ServiceProjects && !cfg.SharedVPC {
+		return nil, newValidationError("bootstrap-org", "serviceProjects", "requires sharedVpc to be enabled")
+	}
+	return cfg, nil
 }
 
 const bootstrapOrgMgmtFolder = `apiVersion: resourcemanager.cnrm.cloud.google.com/v1beta1

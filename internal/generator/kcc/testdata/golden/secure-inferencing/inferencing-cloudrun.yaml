@@ -16,10 +16,8 @@ spec:
           - name: LITELLM_MASTER_KEY
             valueSource:
               secretKeyRef:
-                secretRef:
-                  name: ai-proxy-litellm-master-key
-                versionRef:
-                  version: latest
+                secret: ai-proxy-litellm-master-key
+                version: "latest"
           - name: LITELLM_MODEL
             value: vertex_ai/gemini-2.0-flash
           - name: LITELLM_LOG

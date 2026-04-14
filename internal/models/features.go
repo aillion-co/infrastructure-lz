@@ -108,6 +108,7 @@ type SkaffoldAppDevConfig struct {
 	ServiceName  string `json:"serviceName"`
 	Description  string `json:"description,omitempty"`
 	Authors      string `json:"authors,omitempty"`
+	Region       string `json:"region"`
 
 	// Cluster
 	ClusterType      string `json:"clusterType"`      // autopilot, standard

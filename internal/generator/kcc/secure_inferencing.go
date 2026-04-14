@@ -57,18 +57,27 @@ func (b *secureInferencingBuilder) Build(config interface{}) ([]Resource, error)
 }
 
 func toSecureInferencingConfig(config interface{}) (*models.SecureInferencingConfig, error) {
-	if cfg, ok := config.(*models.SecureInferencingConfig); ok {
-		return cfg, nil
+	cfg, ok := config.(*models.SecureInferencingConfig)
+	if !ok {
+		data, err := json.Marshal(config)
+		if err != nil {
+			return nil, fmt.Errorf("marshalling secure-inferencing config: %w", err)
+		}
+		cfg = &models.SecureInferencingConfig{}
+		if err := json.Unmarshal(data, cfg); err != nil {
+			return nil, fmt.Errorf("unmarshalling secure-inferencing config: %w", err)
+		}
 	}
-	data, err := json.Marshal(config)
-	if err != nil {
-		return nil, fmt.Errorf("marshalling secure-inferencing config: %w", err)
+	if cfg.ProjectID == "" {
+		return nil, newValidationError("secure-inferencing", "projectId", "is required")
 	}
-	var cfg models.SecureInferencingConfig
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("unmarshalling secure-inferencing config: %w", err)
+	if cfg.ProjectName == "" {
+		return nil, newValidationError("secure-inferencing", "projectName", "is required")
 	}
-	return &cfg, nil
+	if cfg.Region == "" {
+		return nil, newValidationError("secure-inferencing", "region", "is required")
+	}
+	return cfg, nil
 }
 
 const inferencingAPIs = `apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
@@ -186,10 +195,8 @@ spec:
           - name: LITELLM_MASTER_KEY
             valueSource:
               secretKeyRef:
-                secretRef:
-                  name: {{ .ProjectName }}-litellm-master-key
-                versionRef:
-                  version: latest
+                secret: {{ .ProjectName }}-litellm-master-key
+                version: "latest"
 {{- if .EnableGemini }}
           - name: LITELLM_MODEL
             value: vertex_ai/{{ default "gemini-2.0-flash" .GeminiModel }}

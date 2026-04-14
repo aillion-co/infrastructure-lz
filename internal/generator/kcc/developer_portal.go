@@ -66,18 +66,27 @@ func (b *developerPortalBuilder) Build(config interface{}) ([]Resource, error) {
 }
 
 func toDeveloperPortalConfig(config interface{}) (*models.DeveloperPortalConfig, error) {
-	if cfg, ok := config.(*models.DeveloperPortalConfig); ok {
-		return cfg, nil
+	cfg, ok := config.(*models.DeveloperPortalConfig)
+	if !ok {
+		data, err := json.Marshal(config)
+		if err != nil {
+			return nil, fmt.Errorf("marshalling developer-portal config: %w", err)
+		}
+		cfg = &models.DeveloperPortalConfig{}
+		if err := json.Unmarshal(data, cfg); err != nil {
+			return nil, fmt.Errorf("unmarshalling developer-portal config: %w", err)
+		}
 	}
-	data, err := json.Marshal(config)
-	if err != nil {
-		return nil, fmt.Errorf("marshalling developer-portal config: %w", err)
+	if cfg.ProjectName == "" {
+		return nil, newValidationError("dynamic-developer-portal", "projectName", "is required")
 	}
-	var cfg models.DeveloperPortalConfig
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("unmarshalling developer-portal config: %w", err)
+	if cfg.GCPProjectID == "" {
+		return nil, newValidationError("dynamic-developer-portal", "gcpProjectId", "is required")
 	}
-	return &cfg, nil
+	if cfg.GCPRegion == "" {
+		return nil, newValidationError("dynamic-developer-portal", "gcpRegion", "is required")
+	}
+	return cfg, nil
 }
 
 const portalAPIs = `apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1

@@ -66,18 +66,30 @@ func (b *hardenedImageBakeryBuilder) Build(config interface{}) ([]Resource, erro
 }
 
 func toHardenedImageConfig(config interface{}) (*models.HardenedImageBakeryConfig, error) {
-	if cfg, ok := config.(*models.HardenedImageBakeryConfig); ok {
-		return cfg, nil
+	cfg, ok := config.(*models.HardenedImageBakeryConfig)
+	if !ok {
+		data, err := json.Marshal(config)
+		if err != nil {
+			return nil, fmt.Errorf("marshalling hardened-image config: %w", err)
+		}
+		cfg = &models.HardenedImageBakeryConfig{}
+		if err := json.Unmarshal(data, cfg); err != nil {
+			return nil, fmt.Errorf("unmarshalling hardened-image config: %w", err)
+		}
 	}
-	data, err := json.Marshal(config)
-	if err != nil {
-		return nil, fmt.Errorf("marshalling hardened-image config: %w", err)
+	if cfg.ProjectName == "" {
+		return nil, newValidationError("hardened-image-bakery", "projectName", "is required")
 	}
-	var cfg models.HardenedImageBakeryConfig
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("unmarshalling hardened-image config: %w", err)
+	if cfg.ProjectID == "" {
+		return nil, newValidationError("hardened-image-bakery", "projectId", "is required")
 	}
-	return &cfg, nil
+	if cfg.Region == "" {
+		return nil, newValidationError("hardened-image-bakery", "region", "is required")
+	}
+	if cfg.Zone == "" {
+		return nil, newValidationError("hardened-image-bakery", "zone", "is required")
+	}
+	return cfg, nil
 }
 
 const bakeryAPIs = `apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1

@@ -61,18 +61,27 @@ func (b *bigqueryAnalyticsBuilder) Build(config interface{}) ([]Resource, error)
 }
 
 func toBigQueryConfig(config interface{}) (*models.BigQueryAnalyticsConfig, error) {
-	if cfg, ok := config.(*models.BigQueryAnalyticsConfig); ok {
-		return cfg, nil
+	cfg, ok := config.(*models.BigQueryAnalyticsConfig)
+	if !ok {
+		data, err := json.Marshal(config)
+		if err != nil {
+			return nil, fmt.Errorf("marshalling bigquery config: %w", err)
+		}
+		cfg = &models.BigQueryAnalyticsConfig{}
+		if err := json.Unmarshal(data, cfg); err != nil {
+			return nil, fmt.Errorf("unmarshalling bigquery config: %w", err)
+		}
 	}
-	data, err := json.Marshal(config)
-	if err != nil {
-		return nil, fmt.Errorf("marshalling bigquery config: %w", err)
+	if cfg.ProjectID == "" {
+		return nil, newValidationError("bigquery-analytics", "projectId", "is required")
 	}
-	var cfg models.BigQueryAnalyticsConfig
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("unmarshalling bigquery config: %w", err)
+	if cfg.ProjectName == "" {
+		return nil, newValidationError("bigquery-analytics", "projectName", "is required")
 	}
-	return &cfg, nil
+	if cfg.Region == "" {
+		return nil, newValidationError("bigquery-analytics", "region", "is required")
+	}
+	return cfg, nil
 }
 
 const bqAPIs = `apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1

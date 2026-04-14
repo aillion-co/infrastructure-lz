@@ -229,6 +229,7 @@ func TestSkaffoldAppDevBuilder_Build(t *testing.T) {
 	cfg := &models.SkaffoldAppDevConfig{
 		ProjectName:      "myapp",
 		ServiceName:      "api",
+		Region:           "us-central1",
 		ClusterType:      "standard",
 		MachineType:      "e2-standard-4",
 		EnableAutoscaling: true,
@@ -273,6 +274,7 @@ func TestSkaffoldAppDevBuilder_Build_Autopilot_NoSQL(t *testing.T) {
 	cfg := &models.SkaffoldAppDevConfig{
 		ProjectName:    "simple",
 		ServiceName:    "web",
+		Region:         "us-central1",
 		ClusterType:    "autopilot",
 		ReleaseChannel: "STABLE",
 		SQLDB:          "no",

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 
 	"github.com/aillion-co/infrastructure-lz/internal/generator"
+	"github.com/aillion-co/infrastructure-lz/internal/generator/kcc"
 	"github.com/aillion-co/infrastructure-lz/internal/models"
 	"github.com/aillion-co/infrastructure-lz/internal/telemetry"
 )
@@ -60,6 +62,19 @@ func (h *ActivateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	zipData, err := h.gen.GenerateActivation(ctx, &req)
 	if err != nil {
 		span.RecordError(err)
+		var validationErr *kcc.ValidationError
+		if errors.As(err, &validationErr) {
+			span.SetStatus(codes.Error, "feature config validation failed")
+			slog.WarnContext(ctx, "activation feature config invalid", "error", err, "customer", req.Customer.CustomerName)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]any{
+				"error":   err.Error(),
+				"feature": validationErr.Feature,
+				"field":   validationErr.Field,
+			})
+			return
+		}
 		span.SetStatus(codes.Error, "activation generation failed")
 		slog.ErrorContext(ctx, "failed to generate activation", "error", err, "customer", req.Customer.CustomerName)
 		http.Error(w, "activation generation failed", http.StatusInternalServerError)
