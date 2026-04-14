@@ -62,6 +62,18 @@ func (b *skaffoldAppDevBuilder) Build(config interface{}) ([]Resource, error) {
 		resources = append(resources, Resource{Name: "appdev-cloudsql.yaml", Content: res})
 	}
 
+	// CMEK IAM bindings for container and (optionally) sqladmin service
+	// agents. Skaffold resources don't declare a project-id annotation, so
+	// the ServiceIdentity projectRef uses ProjectName on the assumption
+	// that it matches the GCP project hosting the feature.
+	if cfg.CMEK {
+		res, err = renderTemplate("cmek-iam.yaml", appdevCMEKIAM, cfg)
+		if err != nil {
+			return nil, err
+		}
+		resources = append(resources, Resource{Name: "cmek-iam.yaml", Content: res})
+	}
+
 	return resources, nil
 }
 
@@ -111,6 +123,11 @@ spec:
   networkPolicy:
     enabled: true
     provider: CALICO
+{{- if .CMEK }}
+  databaseEncryption:
+    state: ENCRYPTED
+    keyName: {{ .CMEKKeyPrefix }}/cryptoKeys/gke
+{{- end }}
 {{- if not (eq .ClusterType "autopilot") }}
 ---
 apiVersion: container.cnrm.cloud.google.com/v1beta1
@@ -281,6 +298,10 @@ metadata:
 spec:
   databaseVersion: POSTGRES_15
   region: {{ .Region }}
+{{- if .CMEK }}
+  encryptionKMSCryptoKeyRef:
+    external: {{ .CMEKKeyPrefix }}/cryptoKeys/sql
+{{- end }}
   settings:
     tier: db-custom-2-8192
     availabilityType: REGIONAL
@@ -305,4 +326,64 @@ spec:
     name: {{ .ProjectName }}-db
   charset: UTF8
   collation: en_US.UTF8
+`
+
+// appdevCMEKIAM binds the container service agent (always) and the
+// sqladmin service agent (when SQLDB is enabled) to the respective crypto
+// keys in the mgmt project.
+const appdevCMEKIAM = `apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: ServiceIdentity
+metadata:
+  name: {{ .ProjectName }}-container-identity
+  namespace: config-connector
+spec:
+  projectRef:
+    external: {{ .ProjectName }}
+  resourceID: container.googleapis.com
+---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicyMember
+metadata:
+  name: {{ .ProjectName }}-gke-cmek
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: {{ .CMEKKeyProject }}
+spec:
+  resourceRef:
+    apiVersion: kms.cnrm.cloud.google.com/v1beta1
+    kind: KMSCryptoKey
+    name: {{ .CMEKKeyCustomer }}-gke
+  role: roles/cloudkms.cryptoKeyEncrypterDecrypter
+  memberFrom:
+    serviceIdentityRef:
+      name: {{ .ProjectName }}-container-identity
+{{- if eq .SQLDB "yes" }}
+---
+apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: ServiceIdentity
+metadata:
+  name: {{ .ProjectName }}-sqladmin-identity
+  namespace: config-connector
+spec:
+  projectRef:
+    external: {{ .ProjectName }}
+  resourceID: sqladmin.googleapis.com
+---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicyMember
+metadata:
+  name: {{ .ProjectName }}-sql-cmek
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: {{ .CMEKKeyProject }}
+spec:
+  resourceRef:
+    apiVersion: kms.cnrm.cloud.google.com/v1beta1
+    kind: KMSCryptoKey
+    name: {{ .CMEKKeyCustomer }}-sql
+  role: roles/cloudkms.cryptoKeyEncrypterDecrypter
+  memberFrom:
+    serviceIdentityRef:
+      name: {{ .ProjectName }}-sqladmin-identity
+{{- end }}
 `

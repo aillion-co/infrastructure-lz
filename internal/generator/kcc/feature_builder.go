@@ -97,4 +97,5 @@ var templateFuncs = template.FuncMap{
 		}
 		return val
 	},
+	"list": func(items ...string) []string { return items },
 }

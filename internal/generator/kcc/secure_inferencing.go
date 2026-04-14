@@ -53,6 +53,15 @@ func (b *secureInferencingBuilder) Build(config interface{}) ([]Resource, error)
 	}
 	resources = append(resources, Resource{Name: "inferencing-cloudrun.yaml", Content: res})
 
+	// CMEK IAM bindings for secretmanager and run service agents.
+	if cfg.CMEK {
+		res, err = renderTemplate("cmek-iam.yaml", inferencingCMEKIAM, cfg)
+		if err != nil {
+			return nil, err
+		}
+		resources = append(resources, Resource{Name: "cmek-iam.yaml", Content: res})
+	}
+
 	return resources, nil
 }
 
@@ -162,8 +171,18 @@ metadata:
   annotations:
     cnrm.cloud.google.com/project-id: {{ .ProjectID }}
 spec:
+{{- if .CMEK }}
+  replication:
+    userManaged:
+      replicas:
+        - location: {{ .Region }}
+          customerManagedEncryption:
+            kmsKeyRef:
+              external: {{ .CMEKKeyPrefix }}/cryptoKeys/secrets
+{{- else }}
   replication:
     automatic: true
+{{- end }}
 ---
 apiVersion: secretmanager.cnrm.cloud.google.com/v1beta1
 kind: SecretManagerSecretVersion
@@ -221,8 +240,70 @@ spec:
     scaling:
       minInstanceCount: 0
       maxInstanceCount: {{ if .CloudRunMaxInstances }}{{ .CloudRunMaxInstances }}{{ else }}5{{ end }}
+{{- if .CMEK }}
+    encryptionKey: {{ .CMEKKeyPrefix }}/cryptoKeys/run
+{{- end }}
     serviceAccountName: {{ .ProjectName }}-litellm@{{ .ProjectID }}.iam.gserviceaccount.com
   traffic:
     - type: TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST
       percent: 100
+`
+
+// inferencingCMEKIAM binds the secretmanager and run service agents in the
+// inferencing project to the secrets and run crypto keys in the mgmt
+// project so the user-managed replica on SecretManagerSecret and the
+// Cloud Run encryptionKey can reconcile.
+const inferencingCMEKIAM = `apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: ServiceIdentity
+metadata:
+  name: {{ .ProjectName }}-secretmanager-identity
+  namespace: config-connector
+spec:
+  projectRef:
+    external: {{ .ProjectID }}
+  resourceID: secretmanager.googleapis.com
+---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicyMember
+metadata:
+  name: {{ .ProjectName }}-secrets-cmek
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: {{ .CMEKKeyProject }}
+spec:
+  resourceRef:
+    apiVersion: kms.cnrm.cloud.google.com/v1beta1
+    kind: KMSCryptoKey
+    name: {{ .CMEKKeyCustomer }}-secrets
+  role: roles/cloudkms.cryptoKeyEncrypterDecrypter
+  memberFrom:
+    serviceIdentityRef:
+      name: {{ .ProjectName }}-secretmanager-identity
+---
+apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: ServiceIdentity
+metadata:
+  name: {{ .ProjectName }}-run-identity
+  namespace: config-connector
+spec:
+  projectRef:
+    external: {{ .ProjectID }}
+  resourceID: run.googleapis.com
+---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicyMember
+metadata:
+  name: {{ .ProjectName }}-run-cmek
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: {{ .CMEKKeyProject }}
+spec:
+  resourceRef:
+    apiVersion: kms.cnrm.cloud.google.com/v1beta1
+    kind: KMSCryptoKey
+    name: {{ .CMEKKeyCustomer }}-run
+  role: roles/cloudkms.cryptoKeyEncrypterDecrypter
+  memberFrom:
+    serviceIdentityRef:
+      name: {{ .ProjectName }}-run-identity
 `

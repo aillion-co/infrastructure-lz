@@ -1,122 +1,20 @@
-/* Wizard-specific styles for the activation UI */
+/* Wizard-specific tweaks layered on top of DaisyUI + Tailwind.
+ * The activation wizard uses DaisyUI components and Tailwind utilities
+ * directly in the markup; this stylesheet only contains small animations
+ * and focus affordances that would otherwise require a full Tailwind
+ * config step. Keep it short — prefer utility classes in the template. */
 
-/* Progress indicator */
-#wizard-progress {
-    margin-top: 1rem;
-}
-#wizard-progress small {
-    display: block;
-    margin-top: 0.25rem;
-    color: var(--pico-muted-color);
-}
-
-/* Required field marker */
-.required {
-    color: var(--pico-del-color, #c62828);
-}
-
-/* Feature grid cards */
+/* Feature card hover lift. DaisyUI .card doesn't animate on hover by
+ * default, and using only `transition-colors` doesn't capture the shift. */
 .feature-card {
-    cursor: pointer;
-    transition: border-color 0.2s, box-shadow 0.2s;
-    margin-bottom: 0;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
-.feature-card:hover {
-    border-color: var(--pico-primary);
-}
-.feature-card.selected {
-    border-color: var(--pico-primary);
-    box-shadow: 0 0 0 2px var(--pico-primary-focus);
-}
-.feature-card.disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-.feature-card.recommended {
-    border-color: #36d399;
-    box-shadow: 0 0 0 2px rgba(54, 211, 153, 0.3);
-}
-.rec-badge {
-    margin-left: 0.5rem;
-}
-.recommended-banner {
-    margin-bottom: 1rem;
-}
-.feature-card header {
-    padding-bottom: 0.5rem;
-}
-.feature-card footer {
-    padding-top: 0.5rem;
+.feature-card:not(.pointer-events-none):hover {
+    transform: translateY(-1px);
 }
 
-/* Config sections */
-#feature-configs details {
-    margin-bottom: 1rem;
-}
-#feature-configs details summary {
-    cursor: pointer;
-}
-#feature-configs fieldset {
-    margin-top: 0.75rem;
-    padding: 0.75rem;
-    border: 1px solid var(--pico-muted-border-color);
-    border-radius: var(--pico-border-radius);
-}
-#feature-configs fieldset label {
-    margin-bottom: 0.25rem;
-}
-
-/* Review table */
-#review-summary table {
-    margin-bottom: 1rem;
-}
-#review-summary h4 {
-    margin-top: 1rem;
-    margin-bottom: 0.5rem;
-}
-
-/* Cost summary */
-#cost-summary {
-    margin-top: 1.5rem;
-}
-#cost-summary h4 {
-    margin-top: 1rem;
-    margin-bottom: 0.5rem;
-}
-.cost-feature {
-    margin-bottom: 0.5rem;
-}
-.cost-feature summary {
-    cursor: pointer;
-    padding: 0.5rem 0;
-}
-.cost-line-items table {
-    margin: 0.5rem 0;
-    font-size: 0.9rem;
-}
-.cost-total {
-    margin-top: 1rem;
-    font-size: 1.1rem;
-    color: var(--pico-primary);
-}
-
-/* Result panel */
-#result-panel .success {
-    color: var(--pico-ins-color, #2e7d32);
-    background: var(--pico-card-background-color);
-    padding: 1rem;
-    border-radius: var(--pico-border-radius);
-    margin-bottom: 1rem;
-}
-#result-panel .error {
-    color: var(--pico-del-color, #c62828);
-    background: var(--pico-card-background-color);
-    padding: 1rem;
-    border-radius: var(--pico-border-radius);
-    margin-bottom: 1rem;
-}
-
-/* Wizard navigation footer */
-article > footer .grid {
-    align-items: center;
+/* Make the embedded checkbox click-through from the card body without
+ * swallowing the card's own click handler. */
+.feature-card input[type="checkbox"] {
+    pointer-events: auto;
 }

@@ -14,6 +14,7 @@ type BootstrapOrgConfig struct {
 	// Security
 	OrgPolicies bool `json:"orgPolicies"`
 	VPCSC       bool `json:"vpcSc"` // VPC Service Controls
+	CMEK        bool `json:"cmek"`  // Provision a KMSKeyRing + per-purpose CryptoKeys in the mgmt project and attach them to every encryptable resource in every enabled feature.
 
 	// Networking
 	SharedVPC       bool `json:"sharedVpc"`
@@ -59,6 +60,14 @@ type BigQueryAnalyticsConfig struct {
 	DataSourceType          string `json:"dataSourceType,omitempty"` // none, crm, google-analytics
 	DataViewerGroup         string `json:"dataViewerGroup,omitempty"`
 	EnableScheduledQueries  bool   `json:"enableScheduledQueries"`
+
+	// CMEK is propagated from bootstrap-org by the activation generator; do not
+	// set it by hand. When true, CMEKKeyPrefix names the KMSKeyRing created by
+	// bootstrap-org and every encryptable resource gets a kmsKeyRef.
+	CMEK            bool   `json:"cmek,omitempty"`
+	CMEKKeyPrefix   string `json:"cmekKeyPrefix,omitempty"`
+	CMEKKeyProject  string `json:"cmekKeyProject,omitempty"`
+	CMEKKeyCustomer string `json:"cmekKeyCustomer,omitempty"`
 }
 
 // DeveloperPortalConfig configures the Backstage developer portal deployment.
@@ -69,6 +78,11 @@ type DeveloperPortalConfig struct {
 	GCPNetwork   string `json:"gcpNetwork,omitempty"`
 	GCPSubnet    string `json:"gcpSubnet,omitempty"`
 	GitRepoSSH   string `json:"gitRepoSshUrl"`
+
+	CMEK            bool   `json:"cmek,omitempty"`
+	CMEKKeyPrefix   string `json:"cmekKeyPrefix,omitempty"`
+	CMEKKeyProject  string `json:"cmekKeyProject,omitempty"`
+	CMEKKeyCustomer string `json:"cmekKeyCustomer,omitempty"`
 }
 
 // HardenedImageBakeryConfig configures the CIS-hardened image pipeline.
@@ -84,6 +98,11 @@ type HardenedImageBakeryConfig struct {
 	ArtifactRepository string `json:"artifactRepository,omitempty"`
 	PackerVersion      string `json:"packerVersion"`
 	AnsibleVersion     string `json:"ansibleVersion"`
+
+	CMEK            bool   `json:"cmek,omitempty"`
+	CMEKKeyPrefix   string `json:"cmekKeyPrefix,omitempty"`
+	CMEKKeyProject  string `json:"cmekKeyProject,omitempty"`
+	CMEKKeyCustomer string `json:"cmekKeyCustomer,omitempty"`
 }
 
 // SecureInferencingConfig configures the LiteLLM AI proxy deployment.
@@ -100,6 +119,11 @@ type SecureInferencingConfig struct {
 	CloudRunMemory       string `json:"cloudRunMemory,omitempty"`
 	CloudRunMaxInstances int    `json:"cloudRunMaxInstances,omitempty"`
 	AllowedDomains       string `json:"allowedDomains,omitempty"`
+
+	CMEK            bool   `json:"cmek,omitempty"`
+	CMEKKeyPrefix   string `json:"cmekKeyPrefix,omitempty"`
+	CMEKKeyProject  string `json:"cmekKeyProject,omitempty"`
+	CMEKKeyCustomer string `json:"cmekKeyCustomer,omitempty"`
 }
 
 // SkaffoldAppDevConfig configures the Kubernetes application scaffold.
@@ -132,4 +156,9 @@ type SkaffoldAppDevConfig struct {
 	// Features
 	SQLDB        string `json:"sqlDb"`        // yes, no
 	AllowIngress string `json:"allowIngress"` // yes, no
+
+	CMEK            bool   `json:"cmek,omitempty"`
+	CMEKKeyPrefix   string `json:"cmekKeyPrefix,omitempty"`
+	CMEKKeyProject  string `json:"cmekKeyProject,omitempty"`
+	CMEKKeyCustomer string `json:"cmekKeyCustomer,omitempty"`
 }

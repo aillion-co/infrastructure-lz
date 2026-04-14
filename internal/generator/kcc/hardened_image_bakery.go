@@ -62,6 +62,15 @@ func (b *hardenedImageBakeryBuilder) Build(config interface{}) ([]Resource, erro
 		resources = append(resources, Resource{Name: "bakery-logs-bucket.yaml", Content: res})
 	}
 
+	// CMEK IAM bindings for artifact-registry and storage service agents.
+	if cfg.CMEK {
+		res, err = renderTemplate("cmek-iam.yaml", bakeryCMEKIAM, cfg)
+		if err != nil {
+			return nil, err
+		}
+		resources = append(resources, Resource{Name: "cmek-iam.yaml", Content: res})
+	}
+
 	return resources, nil
 }
 
@@ -173,6 +182,10 @@ spec:
   location: {{ .Region }}
   format: DOCKER
   description: Hardened VM image repository for {{ .ProjectName }}
+{{- if .CMEK }}
+  kmsKeyRef:
+    external: {{ .CMEKKeyPrefix }}/cryptoKeys/artifact-registry
+{{- end }}
 `
 
 const bakeryCloudBuild = `apiVersion: cloudbuild.cnrm.cloud.google.com/v1beta1
@@ -240,9 +253,72 @@ metadata:
 spec:
   location: {{ .Region }}
   uniformBucketLevelAccess: true
+{{- if .CMEK }}
+  encryption:
+    defaultKmsKeyRef:
+      external: {{ .CMEKKeyPrefix }}/cryptoKeys/storage
+{{- end }}
   lifecycleRule:
     - action:
         type: Delete
       condition:
         age: 90
+`
+
+// bakeryCMEKIAM binds the artifact-registry and storage service agents in
+// the bakery project to the relevant crypto keys so the CMEK-encrypted
+// repository and logs bucket can actually reconcile.
+const bakeryCMEKIAM = `apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: ServiceIdentity
+metadata:
+  name: {{ .ProjectName }}-artifactregistry-identity
+  namespace: config-connector
+spec:
+  projectRef:
+    external: {{ .ProjectID }}
+  resourceID: artifactregistry.googleapis.com
+---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicyMember
+metadata:
+  name: {{ .ProjectName }}-artifact-registry-cmek
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: {{ .CMEKKeyProject }}
+spec:
+  resourceRef:
+    apiVersion: kms.cnrm.cloud.google.com/v1beta1
+    kind: KMSCryptoKey
+    name: {{ .CMEKKeyCustomer }}-artifact-registry
+  role: roles/cloudkms.cryptoKeyEncrypterDecrypter
+  memberFrom:
+    serviceIdentityRef:
+      name: {{ .ProjectName }}-artifactregistry-identity
+---
+apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: ServiceIdentity
+metadata:
+  name: {{ .ProjectName }}-storage-identity
+  namespace: config-connector
+spec:
+  projectRef:
+    external: {{ .ProjectID }}
+  resourceID: storage.googleapis.com
+---
+apiVersion: iam.cnrm.cloud.google.com/v1beta1
+kind: IAMPolicyMember
+metadata:
+  name: {{ .ProjectName }}-storage-cmek
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: {{ .CMEKKeyProject }}
+spec:
+  resourceRef:
+    apiVersion: kms.cnrm.cloud.google.com/v1beta1
+    kind: KMSCryptoKey
+    name: {{ .CMEKKeyCustomer }}-storage
+  role: roles/cloudkms.cryptoKeyEncrypterDecrypter
+  memberFrom:
+    serviceIdentityRef:
+      name: {{ .ProjectName }}-storage-identity
 `
