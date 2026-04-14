@@ -400,6 +400,7 @@
                     <label><input type="checkbox" data-feature="bootstrap-org" data-field="orgPolicies" class="cfg"> Enable Org Policies</label>
                     <label><input type="checkbox" data-feature="bootstrap-org" data-field="vpcSc" class="cfg"> VPC Service Controls</label>
                     <label><input type="checkbox" data-feature="bootstrap-org" data-field="sharedVpc" class="cfg"> Shared VPC</label>
+                    <label><input type="checkbox" data-feature="bootstrap-org" data-field="serviceProjects" class="cfg"> Attach workload projects as Shared VPC service projects <small>(requires Shared VPC)</small></label>
                     <label><input type="checkbox" data-feature="bootstrap-org" data-field="gkeCluster" class="cfg"> GKE Clusters per Environment</label>
                     <label><input type="checkbox" data-feature="bootstrap-org" data-field="envFolders" class="cfg"> Environment Folders</label>
                 </fieldset>`,
@@ -411,7 +412,10 @@
                 <div class="grid">
                     <label>Region <input type="text" data-feature="bigquery-analytics" data-field="region" class="cfg" value="europe-west2"></label>
                     <label>Dataset ID <input type="text" data-feature="bigquery-analytics" data-field="datasetId" class="cfg" value="analytics"></label>
-                </div>`,
+                </div>
+                <fieldset>
+                    <label><input type="checkbox" data-feature="bigquery-analytics" data-field="enableDataTransfer" class="cfg"> Provision a BigQuery Data Transfer service</label>
+                </fieldset>`,
             'dynamic-developer-portal': `
                 <div class="grid">
                     <label>Project Name <input type="text" data-feature="dynamic-developer-portal" data-field="projectName" class="cfg"></label>
@@ -481,7 +485,19 @@
                             <option value="yes">Yes (PostgreSQL)</option>
                         </select>
                     </label>
-                </div>`
+                </div>
+                <div class="grid">
+                    <label>Public Ingress
+                        <select data-feature="skaffold-application-development" data-field="allowIngress" class="cfg">
+                            <option value="no">No</option>
+                            <option value="yes">Yes (external HTTP load balancer)</option>
+                        </select>
+                    </label>
+                </div>
+                <fieldset>
+                    <label><input type="checkbox" data-feature="skaffold-application-development" data-field="enableAutoscaling" class="cfg"> Enable cluster autoscaling</label>
+                    <label><input type="checkbox" data-feature="skaffold-application-development" data-field="spotVms" class="cfg"> Use Spot VMs for node pools</label>
+                </fieldset>`
         };
         return configs[featureId] || '<p>No configuration options.</p>';
     }
