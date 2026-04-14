@@ -173,6 +173,10 @@ spec:
   location: {{ .Region }}
   format: DOCKER
   description: Hardened VM image repository for {{ .ProjectName }}
+{{- if .CMEK }}
+  kmsKeyRef:
+    external: {{ .CMEKKeyPrefix }}/cryptoKeys/artifact-registry
+{{- end }}
 `
 
 const bakeryCloudBuild = `apiVersion: cloudbuild.cnrm.cloud.google.com/v1beta1
@@ -240,6 +244,11 @@ metadata:
 spec:
   location: {{ .Region }}
   uniformBucketLevelAccess: true
+{{- if .CMEK }}
+  encryption:
+    defaultKmsKeyRef:
+      external: {{ .CMEKKeyPrefix }}/cryptoKeys/storage
+{{- end }}
   lifecycleRule:
     - action:
         type: Delete

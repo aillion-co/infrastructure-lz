@@ -172,6 +172,107 @@ func TestActivate_AllFeatures(t *testing.T) {
 	assertZipContains(t, zipData, "RunService")
 }
 
+// TestActivate_CMEKEverywhere verifies that ticking the bootstrap-org CMEK
+// flag propagates through to every encryptable resource in every enabled
+// feature, and that the KMSKeyRing + per-purpose CryptoKeys are provisioned
+// in the management project.
+func TestActivate_CMEKEverywhere(t *testing.T) {
+	bootstrap := validBootstrapOrgConfig()
+	bootstrap["customerName"] = "cmektest"
+	bootstrap["cmek"] = true
+
+	req := newActivationRequest("cmektest", []map[string]any{
+		bootstrapOrgFeature(true, bootstrap),
+		{"featureId": "bigquery-analytics", "enabled": true, "config": map[string]any{
+			"projectName": "cmek-bq", "projectId": "cmek-bq-001",
+			"region": "us-central1", "datasetId": "events",
+		}},
+		{"featureId": "dynamic-developer-portal", "enabled": true, "config": map[string]any{
+			"projectName": "cmek-portal", "gcpProjectId": "cmek-portal-001",
+			"gcpRegion": "us-central1", "gitRepoSshUrl": "git@github.com:cmek/config.git",
+		}},
+		{"featureId": "hardened-image-bakery", "enabled": true, "config": map[string]any{
+			"projectName": "cmek-bakery", "projectId": "cmek-bakery-001",
+			"region": "us-central1", "zone": "us-central1-a",
+			"network": "shared-vpc", "subnetwork": "bakery-subnet",
+			"buildSa": "builder", "logsBucket": "cmek-bakery-logs",
+			"packerVersion": "1.9.4", "ansibleVersion": "2.15.0",
+		}},
+		{"featureId": "secure-inferencing", "enabled": true, "config": map[string]any{
+			"projectName": "cmek-ai", "projectId": "cmek-ai-001",
+			"region": "us-central1", "enableGemini": true, "enableAuditLogging": true,
+		}},
+		{"featureId": "skaffold-application-development", "enabled": true, "config": map[string]any{
+			"projectName": "cmek-app", "serviceName": "api",
+			"region": "us-central1", "clusterType": "standard", "clusterTopology": "regional",
+			"machineType": "e2-standard-4", "releaseChannel": "REGULAR",
+			"sqlDb": "yes", "allowIngress": "no",
+		}},
+	})
+
+	zipData := doActivate(t, req)
+
+	// KMS ring + all 7 per-purpose crypto keys are provisioned by bootstrap-org.
+	assertZipContains(t, zipData, "kind: KMSKeyRing")
+	for _, purpose := range []string{"storage", "gke", "bigquery", "sql", "secrets", "artifact-registry", "run"} {
+		assertZipFileContains(t, zipData,
+			"bootstrap-org/templates/kms-keyring.yaml",
+			"name: cmektest-"+purpose)
+	}
+
+	// Every encryptable resource across every feature must carry a CMEK
+	// reference that points back into the bootstrap key ring.
+	cases := []struct {
+		file  string
+		needle string
+	}{
+		// bootstrap-org env GKE clusters use databaseEncryption.keyName.
+		{"bootstrap-org/templates/env-gke.yaml", "keyName: projects/cmektest-mgmt/locations/us-central1/keyRings/cmektest-activation/cryptoKeys/gke"},
+		// bigquery dataset uses defaultEncryptionConfiguration.kmsKeyRef.
+		{"bigquery-analytics/templates/bq-dataset.yaml", "cryptoKeys/bigquery"},
+		// developer portal config controller GKE cluster.
+		{"dynamic-developer-portal/templates/config-controller.yaml", "cryptoKeys/gke"},
+		// hardened image bakery artifact registry + logs bucket.
+		{"hardened-image-bakery/templates/bakery-artifact-registry.yaml", "cryptoKeys/artifact-registry"},
+		{"hardened-image-bakery/templates/bakery-logs-bucket.yaml", "cryptoKeys/storage"},
+		// secure inferencing secret (user-managed replication) + Cloud Run.
+		{"secure-inferencing/templates/inferencing-secret.yaml", "cryptoKeys/secrets"},
+		{"secure-inferencing/templates/inferencing-secret.yaml", "customerManagedEncryption"},
+		{"secure-inferencing/templates/inferencing-cloudrun.yaml", "cryptoKeys/run"},
+		// skaffold GKE + Cloud SQL.
+		{"skaffold-application-development/templates/appdev-gke.yaml", "cryptoKeys/gke"},
+		{"skaffold-application-development/templates/appdev-cloudsql.yaml", "cryptoKeys/sql"},
+	}
+	for _, c := range cases {
+		assertZipFileContains(t, zipData, c.file, c.needle)
+	}
+}
+
+// TestActivate_CMEKDisabledProducesNoKeyRefs is the control test for
+// TestActivate_CMEKEverywhere: with CMEK off, no KMS resources or key
+// references should appear anywhere in the generated zip.
+func TestActivate_CMEKDisabledProducesNoKeyRefs(t *testing.T) {
+	req := newActivationRequest("nocmek", []map[string]any{
+		bootstrapOrgFeature(true, validBootstrapOrgConfig()),
+		{"featureId": "bigquery-analytics", "enabled": true, "config": map[string]any{
+			"projectName": "nocmek-bq", "projectId": "nocmek-bq-001",
+			"region": "us-central1", "datasetId": "events",
+		}},
+	})
+
+	zipData := doActivate(t, req)
+	for _, needle := range []string{
+		"kind: KMSKeyRing",
+		"kind: KMSCryptoKey",
+		"kmsKeyRef",
+		"customerManagedEncryption",
+		"databaseEncryption",
+		"encryptionKMSCryptoKeyRef",
+	} {
+		assertZipDoesNotContain(t, zipData, needle)
+	}
+}
+
 // TestActivate_FeatureValidationError exercises the ValidationError -> HTTP 400
 // path. An empty envs string triggers bootstrap-org's required-field validator.
 func TestActivate_FeatureValidationError(t *testing.T) {
@@ -566,4 +667,57 @@ func assertZipContains(t *testing.T, zipData []byte, substring string) {
 	}
 
 	t.Errorf("zip does not contain any file with content matching %q", substring)
+}
+
+// assertZipFileContains asserts that a specific file path (matched as a
+// suffix of any entry in the zip) contains the given substring.
+func assertZipFileContains(t *testing.T, zipData []byte, pathSuffix, substring string) {
+	t.Helper()
+
+	r, err := zip.NewReader(bytes.NewReader(zipData), int64(len(zipData)))
+	if err != nil {
+		t.Fatalf("invalid zip: %v", err)
+	}
+
+	for _, f := range r.File {
+		if !strings.HasSuffix(f.Name, pathSuffix) {
+			continue
+		}
+		rc, err := f.Open()
+		if err != nil {
+			continue
+		}
+		data, _ := io.ReadAll(rc)
+		rc.Close()
+		if strings.Contains(string(data), substring) {
+			return
+		}
+		t.Errorf("file %s does not contain %q", f.Name, substring)
+		return
+	}
+	t.Errorf("zip does not contain any entry with suffix %q", pathSuffix)
+}
+
+// assertZipDoesNotContain fails if any file in the zip contains the given
+// substring anywhere in its content.
+func assertZipDoesNotContain(t *testing.T, zipData []byte, substring string) {
+	t.Helper()
+
+	r, err := zip.NewReader(bytes.NewReader(zipData), int64(len(zipData)))
+	if err != nil {
+		t.Fatalf("invalid zip: %v", err)
+	}
+
+	for _, f := range r.File {
+		rc, err := f.Open()
+		if err != nil {
+			continue
+		}
+		data, _ := io.ReadAll(rc)
+		rc.Close()
+		if strings.Contains(string(data), substring) {
+			t.Errorf("unexpected substring %q found in %s", substring, f.Name)
+			return
+		}
+	}
 }

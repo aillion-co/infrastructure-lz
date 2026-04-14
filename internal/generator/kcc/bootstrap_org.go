@@ -90,6 +90,15 @@ func (b *bootstrapOrgBuilder) Build(config interface{}) ([]Resource, error) {
 		resources = append(resources, Resource{Name: "vpc-sc.yaml", Content: res})
 	}
 
+	// CMEK: KeyRing + per-purpose CryptoKeys in the mgmt project.
+	if cfg.CMEK {
+		res, err = renderTemplate("kms-keyring.yaml", bootstrapOrgKMSKeyRing, cfg)
+		if err != nil {
+			return nil, err
+		}
+		resources = append(resources, Resource{Name: "kms-keyring.yaml", Content: res})
+	}
+
 	return resources, nil
 }
 
@@ -497,6 +506,7 @@ spec:
 const bootstrapOrgEnvGKE = `{{- $customer := .CustomerName }}
 {{- $workload := .WorkloadName }}
 {{- $region := .Region }}
+{{- $cmek := .CMEK }}
 {{- range $env := splitCSV .Envs }}
 apiVersion: container.cnrm.cloud.google.com/v1beta1
 kind: ContainerCluster
@@ -523,6 +533,11 @@ spec:
     masterIpv4CidrBlock: "172.16.0.0/28"
   workloadIdentityConfig:
     workloadPool: {{ $customer }}-{{ $workload }}-{{ $env }}.svc.id.goog
+{{- if $cmek }}
+  databaseEncryption:
+    state: ENCRYPTED
+    keyName: projects/{{ $customer }}-mgmt/locations/{{ $region }}/keyRings/{{ $customer }}-activation/cryptoKeys/gke
+{{- end }}
 ---
 {{ end }}
 `
@@ -552,4 +567,51 @@ spec:
       - storage.googleapis.com
       - bigquery.googleapis.com
       - compute.googleapis.com
+`
+
+// bootstrapOrgKMSKeyRing creates a KMSKeyRing in the management project plus
+// one KMSCryptoKey per encryptable resource category. These keys are then
+// referenced by every downstream feature whose CMEK flag is propagated from
+// bootstrap-org. Keys live in the bootstrap region; a resource created in a
+// different region will need to override its region to match, or use a
+// separately-provisioned multi-region key.
+const bootstrapOrgKMSKeyRing = `{{- $customer := .CustomerName }}
+{{- $region := .Region }}
+apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: Service
+metadata:
+  name: {{ $customer }}-mgmt-cloudkms
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: {{ $customer }}-mgmt
+spec:
+  resourceID: cloudkms.googleapis.com
+---
+apiVersion: kms.cnrm.cloud.google.com/v1beta1
+kind: KMSKeyRing
+metadata:
+  name: {{ $customer }}-activation
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: {{ $customer }}-mgmt
+spec:
+  location: {{ $region }}
+{{- range $purpose := list "storage" "gke" "bigquery" "sql" "secrets" "artifact-registry" "run" }}
+---
+apiVersion: kms.cnrm.cloud.google.com/v1beta1
+kind: KMSCryptoKey
+metadata:
+  name: {{ $customer }}-{{ $purpose }}
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: {{ $customer }}-mgmt
+spec:
+  keyRingRef:
+    name: {{ $customer }}-activation
+  purpose: ENCRYPT_DECRYPT
+  rotationPeriod: 7776000s
+  versionTemplate:
+    algorithm: GOOGLE_SYMMETRIC_ENCRYPTION
+    protectionLevel: SOFTWARE
+{{- end }}
 `

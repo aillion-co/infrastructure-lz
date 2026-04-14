@@ -111,6 +111,11 @@ spec:
   networkPolicy:
     enabled: true
     provider: CALICO
+{{- if .CMEK }}
+  databaseEncryption:
+    state: ENCRYPTED
+    keyName: {{ .CMEKKeyPrefix }}/cryptoKeys/gke
+{{- end }}
 {{- if not (eq .ClusterType "autopilot") }}
 ---
 apiVersion: container.cnrm.cloud.google.com/v1beta1
@@ -281,6 +286,10 @@ metadata:
 spec:
   databaseVersion: POSTGRES_15
   region: {{ .Region }}
+{{- if .CMEK }}
+  encryptionKMSCryptoKeyRef:
+    external: {{ .CMEKKeyPrefix }}/cryptoKeys/sql
+{{- end }}
   settings:
     tier: db-custom-2-8192
     availabilityType: REGIONAL

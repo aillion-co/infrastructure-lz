@@ -162,8 +162,18 @@ metadata:
   annotations:
     cnrm.cloud.google.com/project-id: {{ .ProjectID }}
 spec:
+{{- if .CMEK }}
+  replication:
+    userManaged:
+      replicas:
+        - location: {{ .Region }}
+          customerManagedEncryption:
+            kmsKeyRef:
+              external: {{ .CMEKKeyPrefix }}/cryptoKeys/secrets
+{{- else }}
   replication:
     automatic: true
+{{- end }}
 ---
 apiVersion: secretmanager.cnrm.cloud.google.com/v1beta1
 kind: SecretManagerSecretVersion
@@ -221,6 +231,9 @@ spec:
     scaling:
       minInstanceCount: 0
       maxInstanceCount: {{ if .CloudRunMaxInstances }}{{ .CloudRunMaxInstances }}{{ else }}5{{ end }}
+{{- if .CMEK }}
+    encryptionKey: {{ .CMEKKeyPrefix }}/cryptoKeys/run
+{{- end }}
     serviceAccountName: {{ .ProjectName }}-litellm@{{ .ProjectID }}.iam.gserviceaccount.com
   traffic:
     - type: TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST

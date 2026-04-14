@@ -146,6 +146,11 @@ spec:
     masterIpv4CidrBlock: "172.16.1.0/28"
   workloadIdentityConfig:
     workloadPool: {{ .GCPProjectID }}.svc.id.goog
+{{- if .CMEK }}
+  databaseEncryption:
+    state: ENCRYPTED
+    keyName: {{ .CMEKKeyPrefix }}/cryptoKeys/gke
+{{- end }}
   addonsConfig:
     configConnectorConfig:
       enabled: true

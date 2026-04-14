@@ -57,6 +57,13 @@ func (g *ActivationGenerator) GenerateActivation(ctx context.Context, req *model
 		"features_enabled", enabledCount,
 	)
 
+	if err := propagateCMEK(req); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "cmek propagation failed")
+		metrics.GenerateErrors.Add(ctx, 1)
+		return nil, fmt.Errorf("propagating CMEK configuration: %w", err)
+	}
+
 	// Build KCC resources for each enabled feature
 	resourcesByFeature, err := g.registry.BuildAll(req)
 	if err != nil {

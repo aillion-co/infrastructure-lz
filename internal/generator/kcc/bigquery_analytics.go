@@ -122,6 +122,11 @@ spec:
 {{- if .DefaultTableExpMS }}
   defaultTableExpirationMs: {{ .DefaultTableExpMS }}
 {{- end }}
+{{- if .CMEK }}
+  defaultEncryptionConfiguration:
+    kmsKeyRef:
+      external: {{ .CMEKKeyPrefix }}/cryptoKeys/bigquery
+{{- end }}
   access:
     - role: OWNER
       specialGroup: projectOwners
