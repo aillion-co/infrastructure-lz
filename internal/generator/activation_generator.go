@@ -9,11 +9,11 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 
+	"github.com/aillion-co/infrastructure-lz/internal/archive"
 	"github.com/aillion-co/infrastructure-lz/internal/generator/helm"
 	"github.com/aillion-co/infrastructure-lz/internal/generator/kcc"
 	"github.com/aillion-co/infrastructure-lz/internal/models"
 	"github.com/aillion-co/infrastructure-lz/internal/telemetry"
-	"github.com/aillion-co/infrastructure-lz/pkg/archive"
 )
 
 // ActivationGenerator handles generation for the full activation system with

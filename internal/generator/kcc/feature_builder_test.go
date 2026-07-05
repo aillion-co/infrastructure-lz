@@ -318,3 +318,44 @@ func TestFeatureBuilderRegistry_UnknownFeature(t *testing.T) {
 		t.Fatal("expected error for unknown feature")
 	}
 }
+
+func TestBQIDTemplateFunc_SanitizesInvalidChars(t *testing.T) {
+	fn := templateFuncs["bqID"].(func(string) string)
+
+	tests := []struct{ in, want string }{
+		{"customer_events", "customer_events"},
+		{"customer-events", "customer_events"},
+		{"my.data set!", "my_data_set_"},
+		{"Analytics2024", "Analytics2024"},
+	}
+	for _, tt := range tests {
+		if got := fn(tt.in); got != tt.want {
+			t.Errorf("bqID(%q) = %q, want %q", tt.in, got, tt.want)
+		}
+	}
+}
+
+func TestBigQueryAnalyticsBuilder_HyphenatedDatasetID_SanitizedResourceID(t *testing.T) {
+	builder := NewBigQueryAnalyticsBuilder()
+	resources, err := builder.Build(&models.BigQueryAnalyticsConfig{
+		ProjectName: "proj",
+		ProjectID:   "proj-id",
+		Region:      "us-central1",
+		DatasetID:   "raw-events",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	for _, r := range resources {
+		if r.Name != "bq-dataset.yaml" {
+			continue
+		}
+		content := string(r.Content)
+		if !strings.Contains(content, "resourceID: raw_events") {
+			t.Errorf("expected sanitized resourceID raw_events, got:\n%s", content)
+		}
+		return
+	}
+	t.Fatal("bq-dataset.yaml not generated")
+}

@@ -43,16 +43,13 @@ infrastructure-lz/
 │   ├── config/             # App configuration loading
 │   ├── generator/          # IAC generation engine
 │   │   ├── kcc/            # Google Config Connector resource builders
-│   │   ├── helm/           # Helm chart scaffolding and packaging
-│   │   └── templates/      # Go templates for KCC/Helm output
-│   ├── models/             # Domain models (config specs, project defs)
+│   │   └── helm/           # Helm chart scaffolding and packaging
+│   ├── models/             # Domain models (activation, features, discovery)
 │   ├── telemetry/          # OpenTelemetry setup, metrics, tracing
+│   ├── archive/            # Zip file creation utilities
 │   └── web/                # Web UI (templates, static assets)
 │       ├── templates/      # Go HTML templates
 │       └── static/         # CSS, JS, images
-├── pkg/                    # Public/reusable packages
-│   ├── archive/            # Zip file creation utilities
-│   └── validator/          # Input validation helpers
 ├── deploy/                 # Deployment configurations
 │   ├── helm/               # Helm chart for this application
 │   ├── k8s/                # Kustomize overlays

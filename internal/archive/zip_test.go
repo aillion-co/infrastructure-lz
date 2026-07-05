@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/aillion-co/infrastructure-lz/internal/archive"
 	"github.com/aillion-co/infrastructure-lz/internal/generator/helm"
-	"github.com/aillion-co/infrastructure-lz/pkg/archive"
 )
 
 func TestWriteZip_RoundTrip_PreservesFiles(t *testing.T) {

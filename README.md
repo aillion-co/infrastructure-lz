@@ -256,12 +256,10 @@ infrastructure-lz/
 │   ├── generator/
 │   │   ├── kcc/             # KCC resource builders (one per feature)
 │   │   └── helm/            # Helm chart scaffolding
+│   ├── archive/             # Zip utilities
 │   ├── models/              # Domain models (features, discovery, activation)
 │   ├── telemetry/           # OpenTelemetry setup
 │   └── web/                 # Templates and static assets
-├── pkg/
-│   ├── archive/             # Zip utilities
-│   └── validator/           # Input validation
 ├── deploy/
 │   ├── helm/                # Application Helm chart
 │   ├── k8s/                 # Kustomize overlays

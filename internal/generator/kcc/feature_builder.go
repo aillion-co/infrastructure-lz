@@ -97,4 +97,16 @@ var templateFuncs = template.FuncMap{
 		}
 		return val
 	},
+	// bqID sanitizes a string into a valid BigQuery dataset/table ID,
+	// which only allows letters, digits, and underscores.
+	"bqID": func(s string) string {
+		return strings.Map(func(r rune) rune {
+			switch {
+			case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '_':
+				return r
+			default:
+				return '_'
+			}
+		}, s)
+	},
 }
