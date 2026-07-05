@@ -3,6 +3,7 @@ package helm
 import (
 	"fmt"
 	"path"
+	"sort"
 	"strings"
 
 	"github.com/aillion-co/infrastructure-lz/internal/generator/kcc"
@@ -23,9 +24,17 @@ func (b *ActivationBuilder) BuildActivation(req *models.ActivationRequest, resou
 	chartName := fmt.Sprintf("%s-activation", slugify(req.Customer.CustomerName))
 	var files []FileEntry
 
+	// Sort feature IDs so the generated chart bytes are deterministic
+	// regardless of map iteration order.
+	featureIDs := make([]models.FeatureID, 0, len(resourcesByFeature))
+	for fid := range resourcesByFeature {
+		featureIDs = append(featureIDs, fid)
+	}
+	sort.Slice(featureIDs, func(i, j int) bool { return featureIDs[i] < featureIDs[j] })
+
 	// Root Chart.yaml (umbrella chart)
 	var deps []string
-	for fid := range resourcesByFeature {
+	for _, fid := range featureIDs {
 		deps = append(deps, fmt.Sprintf(`    - name: %s
       version: "0.1.0"
       condition: %s.enabled`, string(fid), sanitizeHelmKey(string(fid))))
@@ -51,7 +60,7 @@ dependencies:
 	valuesLines = append(valuesLines, fmt.Sprintf("# Activation values for %s", req.Customer.CustomerName))
 	valuesLines = append(valuesLines, fmt.Sprintf("customerName: %s", req.Customer.CustomerName))
 	valuesLines = append(valuesLines, "")
-	for fid := range resourcesByFeature {
+	for _, fid := range featureIDs {
 		key := sanitizeHelmKey(string(fid))
 		valuesLines = append(valuesLines, fmt.Sprintf("%s:", key))
 		valuesLines = append(valuesLines, "  enabled: true")
@@ -64,7 +73,8 @@ dependencies:
 	})
 
 	// Per-feature sub-charts
-	for fid, resources := range resourcesByFeature {
+	for _, fid := range featureIDs {
+		resources := resourcesByFeature[fid]
 		subChartName := string(fid)
 		subChartPath := path.Join(chartName, "charts", subChartName)
 

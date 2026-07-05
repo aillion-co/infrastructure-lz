@@ -11,7 +11,7 @@ A Go web application that generates Infrastructure-as-Code configurations for Go
 └─────────────┘     └──────────────┘     └───────────────────┘     └──────────┘
 ```
 
-- **Web UI** — Go templates + HTMX + Pico CSS for an interactive activation wizard
+- **Web UI** — Go templates with Pico CSS, daisyUI, and Tailwind for an interactive activation wizard
 - **API Server** — Go `net/http` with middleware for auth, telemetry, and validation
 - **IAC Generator** — Produces KCC YAML manifests wrapped in Helm chart structure
 - **Output** — Zip archive containing an umbrella Helm chart with per-feature sub-charts
@@ -59,7 +59,7 @@ A Go web application that generates Infrastructure-as-Code configurations for Go
 ### Quick start
 
 ```bash
-# Build the server and generator binaries
+# Build the server binary
 make build
 
 # Run the server on port 8080
@@ -147,7 +147,7 @@ make test-coverage
 ### Running a specific test
 
 ```bash
-go test -v -run TestGenerateHelmChart ./internal/generator/...
+go test -v -run TestGolden_BootstrapOrg ./internal/generator/kcc/...
 ```
 
 ### Golden file tests
@@ -248,10 +248,9 @@ main ◄─── feat/my-feature    (squash-and-merge)
 ```
 infrastructure-lz/
 ├── cmd/server/              # HTTP server entrypoint
-├── cmd/generator/           # CLI tool for offline generation
 ├── internal/
 │   ├── api/
-│   │   ├── handlers/        # HTTP handlers (activate, discovery, cost, generate)
+│   │   ├── handlers/        # HTTP handlers (activate, discovery, cost)
 │   │   └── middleware/      # Auth, logging, telemetry, recovery
 │   ├── config/              # App configuration
 │   ├── generator/

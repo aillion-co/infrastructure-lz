@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -132,8 +133,8 @@ func validateToken(ctx context.Context, token string) (*UserInfo, error) {
 	defer span.End()
 
 	client := &http.Client{Timeout: 5 * time.Second}
-	url := fmt.Sprintf("https://oauth2.googleapis.com/tokeninfo?id_token=%s", token)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	endpoint := "https://oauth2.googleapis.com/tokeninfo?id_token=" + url.QueryEscape(token)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("building token validation request: %w", err)
 	}

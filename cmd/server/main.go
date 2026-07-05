@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -47,6 +48,13 @@ func run() error {
 	activationGen := generator.NewActivationGenerator()
 
 	pricer := buildPricingProvider(ctx, cfg.PricingProvider)
+	if closer, ok := pricer.(io.Closer); ok {
+		defer func() {
+			if err := closer.Close(); err != nil {
+				slog.Warn("closing pricing provider failed", "error", err)
+			}
+		}()
+	}
 	router := api.NewRouter(activationGen, pricer)
 
 	srv := &http.Server{
@@ -59,7 +67,7 @@ func run() error {
 
 	errCh := make(chan error, 1)
 	go func() {
-		slog.Info("server starting", "port", cfg.Port, "version", config.Version)
+		slog.InfoContext(ctx, "server starting", "port", cfg.Port, "version", config.Version)
 		errCh <- srv.ListenAndServe()
 	}()
 
@@ -69,7 +77,7 @@ func run() error {
 			return fmt.Errorf("server error: %w", err)
 		}
 	case <-ctx.Done():
-		slog.Info("shutting down gracefully")
+		slog.InfoContext(ctx, "shutting down gracefully")
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if err := srv.Shutdown(shutdownCtx); err != nil {

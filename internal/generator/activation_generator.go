@@ -84,7 +84,7 @@ func (g *ActivationGenerator) GenerateActivation(ctx context.Context, req *model
 
 	// Package as zip
 	var buf bytes.Buffer
-	if err := archive.WriteZip(&buf, chart); err != nil {
+	if err := archive.WriteZip(ctx, &buf, chart); err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "zip creation failed")
 		metrics.GenerateErrors.Add(ctx, 1)

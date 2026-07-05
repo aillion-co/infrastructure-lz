@@ -19,7 +19,7 @@ downloadable zip file.
 └─────────────┘     └──────────────┘     └───────────────────┘     └──────────┘
 ```
 
-- **Web UI**: Go templates + HTMX for interactive config forms
+- **Web UI**: Go templates (Pico CSS/daisyUI/Tailwind) for interactive config forms
 - **API Server**: Go net/http with middleware for auth, telemetry, validation
 - **IAC Generator**: Produces KCC YAML manifests wrapped in Helm chart structure
 - **Output**: Zip archive containing a complete Helm chart
@@ -29,15 +29,13 @@ downloadable zip file.
 | Service | Path | Description |
 |---------|------|-------------|
 | `cmd/server` | Main HTTP server | Serves UI and API endpoints |
-| `cmd/generator` | CLI generator | Standalone CLI for IAC generation |
 
 ## Directory Structure
 
 ```
 infrastructure-lz/
 ├── cmd/                    # Application entrypoints
-│   ├── server/             # HTTP server (main service)
-│   └── generator/          # CLI tool for offline generation
+│   └── server/             # HTTP server (main service)
 ├── internal/               # Private application code
 │   ├── api/                # HTTP handlers and middleware
 │   │   ├── handlers/       # Request handlers per resource
@@ -109,7 +107,7 @@ make test-e2e
 make test-coverage
 
 # Run a specific test by name
-go test -v -run TestGenerateHelmChart ./internal/generator/...
+go test -v -run TestGolden_BootstrapOrg ./internal/generator/kcc/...
 ```
 
 ### Lint & Format
@@ -284,7 +282,7 @@ Set `OTEL_EXPORTER_OTLP_ENDPOINT` to the collector address.
 - Use `net/http` stdlib — no frameworks
 - JSON request/response with proper Content-Type headers
 - Health check at `/healthz`, readiness at `/readyz`
-- Metrics at `/metrics` (Prometheus format)
+- Metrics exported via OTLP to the OpenTelemetry collector (no `/metrics` endpoint)
 
 ### IAC Generation
 

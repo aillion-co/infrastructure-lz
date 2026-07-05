@@ -34,18 +34,6 @@ type BootstrapOrgConfig struct {
 	GKECluster bool   `json:"gkeCluster"`
 }
 
-// BootstrapOrgOutputs are values produced by bootstrap-org that downstream features consume.
-type BootstrapOrgOutputs struct {
-	MgmtProjectID           string   `json:"mgmtProjectId"`
-	MgmtFolderID            string   `json:"mgmtFolderId"`
-	WorkloadProjectIDs      []string `json:"workloadProjectIds"`
-	MgmtVPCName             string   `json:"mgmtVpcName"`
-	MgmtSubnetName          string   `json:"mgmtSubnetName"`
-	GKEClusterNames         []string `json:"gkeClusterNames"`
-	CICDServiceAccountEmail string   `json:"cicdServiceAccountEmail"`
-	TerraformStateBucket    string   `json:"terraformStateBucket"`
-}
-
 // BigQueryAnalyticsConfig configures BigQuery dataset deployment.
 type BigQueryAnalyticsConfig struct {
 	ProjectName             string `json:"projectName"`

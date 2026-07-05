@@ -99,14 +99,27 @@ func validateActivationRequest(req *models.ActivationRequest) []string {
 		errs = append(errs, "contact email is required")
 	}
 
-	enabledCount := 0
+	enabled := make(map[models.FeatureID]bool, len(req.Features))
 	for _, f := range req.Features {
 		if f.Enabled {
-			enabledCount++
+			enabled[f.FeatureID] = true
 		}
 	}
-	if enabledCount == 0 {
+	if len(enabled) == 0 {
 		errs = append(errs, "at least one feature must be enabled")
+	}
+
+	// Enforce declared feature dependencies (e.g. everything depends on
+	// bootstrap-org) so generated charts never contain dangling references.
+	for _, meta := range models.FeatureRegistry() {
+		if !enabled[meta.ID] {
+			continue
+		}
+		for _, dep := range meta.DependsOn {
+			if !enabled[dep] {
+				errs = append(errs, fmt.Sprintf("feature %q requires feature %q to be enabled", meta.ID, dep))
+			}
+		}
 	}
 
 	return errs
