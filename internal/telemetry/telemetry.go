@@ -21,7 +21,7 @@ import (
 // Returns a shutdown function that must be called on application exit.
 func Setup(ctx context.Context, serviceName, version, otlpEndpoint string) (shutdown func(context.Context) error, err error) {
 	if otlpEndpoint == "" {
-		slog.Info("telemetry disabled (no OTEL_EXPORTER_OTLP_ENDPOINT set)")
+		slog.InfoContext(ctx, "telemetry disabled (no OTEL_EXPORTER_OTLP_ENDPOINT set)")
 		return func(context.Context) error { return nil }, nil
 	}
 
@@ -79,7 +79,7 @@ func Setup(ctx context.Context, serviceName, version, otlpEndpoint string) (shut
 		propagation.Baggage{},
 	))
 
-	slog.Info("telemetry initialized",
+	slog.InfoContext(ctx, "telemetry initialized",
 		"endpoint", otlpEndpoint,
 		"service", serviceName,
 		"version", version,

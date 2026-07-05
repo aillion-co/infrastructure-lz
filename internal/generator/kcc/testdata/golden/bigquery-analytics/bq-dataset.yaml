@@ -9,6 +9,9 @@ metadata:
     managed-by: activations-accelerator
     feature: bigquery-analytics
 spec:
+  # BigQuery dataset IDs only allow letters, digits, and underscores, so the
+  # hyphenated Kubernetes metadata.name cannot be used as the dataset ID.
+  resourceID: customer_events
   friendlyName: analytics-proj Analytics Dataset
   description: Customer event analytics dataset
   location: us-central1

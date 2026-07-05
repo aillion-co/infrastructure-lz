@@ -92,34 +92,34 @@ func evaluateDiscovery(resp *models.DiscoveryResponse) []FeatureRecommendation {
 		Reason:      "Organization bootstrap is always recommended as a foundational step",
 	})
 
-	// bigquery-analytics: if DataMgmt mentions BigQuery or analytics
+	// bigquery-analytics: billing export to Looker/BigQuery or BQML usage
 	bqRec := FeatureRecommendation{
 		FeatureID:   models.FeatureBigQueryAnalytics,
 		Recommended: false,
 		Confidence:  "low",
 		Reason:      "No BigQuery or analytics requirements detected",
 	}
-	if containsAny(resp.DataMgmt.EncryptionKeyMgmt, "bigquery", "analytics") ||
-		resp.CostControl.BillingExport == "looker" ||
-		resp.AIEnablement.EnableBQML {
+	if resp.CostControl.BillingExport == "looker" ||
+		resp.AIEnablement.EnableBQML ||
+		len(resp.AIEnablement.BQMLModels) > 0 {
 		bqRec.Recommended = true
 		bqRec.Confidence = "high"
-		bqRec.Reason = "Data management configuration indicates BigQuery or analytics usage"
+		bqRec.Reason = "Billing export or BQML configuration indicates BigQuery analytics usage"
 	}
 	recs = append(recs, bqRec)
 
-	// developer-portal: if IACCICD mentions developer portal
+	// developer-portal: GitOps tooling (VCS + build pipeline) suggests a
+	// Backstage portal for self-service infrastructure management.
 	dpRec := FeatureRecommendation{
 		FeatureID:   models.FeatureDeveloperPortal,
 		Recommended: false,
 		Confidence:  "low",
 		Reason:      "No developer portal requirements detected",
 	}
-	if containsAny(resp.IACCICD.VCS, "developer", "portal") ||
-		containsAny(resp.IACCICD.BuildPipeline, "developer", "portal") {
+	if resp.IACCICD.VCS != "" && resp.IACCICD.BuildPipeline != "" {
 		dpRec.Recommended = true
-		dpRec.Confidence = "high"
-		dpRec.Reason = "IAC/CICD configuration indicates developer portal usage"
+		dpRec.Confidence = "medium"
+		dpRec.Reason = "VCS and build pipeline tooling indicate GitOps workflows that benefit from a developer portal"
 	}
 	recs = append(recs, dpRec)
 
@@ -130,8 +130,7 @@ func evaluateDiscovery(resp *models.DiscoveryResponse) []FeatureRecommendation {
 		Confidence:  "low",
 		Reason:      "No hardened image requirements detected",
 	}
-	if sliceContainsAny(resp.Security.VMSecurity, "hardened", "image") ||
-		containsAny(resp.Security.TeamCapabilities, "hardened", "image") {
+	if sliceContainsAny(resp.Security.VMSecurity, "hardened", "image") {
 		hiRec.Recommended = true
 		hiRec.Confidence = "high"
 		hiRec.Reason = "Security configuration indicates hardened image requirements"
@@ -164,8 +163,7 @@ func evaluateDiscovery(resp *models.DiscoveryResponse) []FeatureRecommendation {
 		Confidence:  "low",
 		Reason:      "No Skaffold or application development requirements detected",
 	}
-	if containsAny(resp.IACCICD.BuildPipeline, "skaffold", "app-dev", "app dev") ||
-		containsAny(resp.IACCICD.VCS, "skaffold", "app-dev", "app dev") {
+	if containsAny(resp.IACCICD.BuildPipeline, "skaffold", "app-dev", "app dev") {
 		saRec.Recommended = true
 		saRec.Confidence = "high"
 		saRec.Reason = "IAC/CICD configuration indicates Skaffold or application development usage"

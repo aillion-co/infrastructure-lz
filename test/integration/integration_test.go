@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -566,4 +567,34 @@ func assertZipContains(t *testing.T, zipData []byte, substring string) {
 	}
 
 	t.Errorf("zip does not contain any file with content matching %q", substring)
+}
+
+// TestActivate_Fixtures posts each example request in test/fixtures to keep
+// the documented fixture files honest against the live API.
+func TestActivate_Fixtures(t *testing.T) {
+	fixtures, err := filepath.Glob(filepath.Join("..", "fixtures", "activation-*.json"))
+	if err != nil {
+		t.Fatalf("globbing fixtures: %v", err)
+	}
+	if len(fixtures) == 0 {
+		t.Fatal("no activation-*.json fixtures found in test/fixtures")
+	}
+
+	for _, fx := range fixtures {
+		t.Run(filepath.Base(fx), func(t *testing.T) {
+			raw, err := os.ReadFile(fx)
+			if err != nil {
+				t.Fatalf("reading fixture: %v", err)
+			}
+			var req map[string]any
+			if err := json.Unmarshal(raw, &req); err != nil {
+				t.Fatalf("fixture is not valid JSON: %v", err)
+			}
+
+			zipData := doActivate(t, req)
+			if _, err := zip.NewReader(bytes.NewReader(zipData), int64(len(zipData))); err != nil {
+				t.Fatalf("fixture activation did not produce a valid zip: %v", err)
+			}
+		})
+	}
 }

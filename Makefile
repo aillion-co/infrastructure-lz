@@ -91,12 +91,16 @@ validate-helm:
 
 validate-kcc:
 	@echo "Validating generated KCC manifests..."
-	$(GO) test -v -run TestValidateKCC ./internal/generator/...
+	$(GO) test -v -run 'TestGolden_' ./internal/generator/kcc/...
 
 # ─── Docker ───────────────────────────────────────────────────────────────────
 
 docker-build:
-	docker build -t $(IMAGE_NAME):$(VERSION) -t $(IMAGE_NAME):latest .
+	docker build \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg COMMIT=$(COMMIT) \
+		--build-arg BUILD_TIME=$(BUILD_TIME) \
+		-t $(IMAGE_NAME):$(VERSION) -t $(IMAGE_NAME):latest .
 
 docker-run: docker-build
 	docker run --rm -p 8080:8080 $(IMAGE_NAME):latest

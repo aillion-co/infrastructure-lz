@@ -37,13 +37,26 @@ func Telemetry(next http.Handler) http.Handler {
 		metrics.HTTPActiveRequests.Add(ctx, 1)
 		defer metrics.HTTPActiveRequests.Add(ctx, -1)
 
+		// Inject trace context into response headers before the handler
+		// writes them; headers set after the first write are dropped.
+		propagation.TraceContext{}.Inject(ctx, propagation.HeaderCarrier(w.Header()))
+
 		start := time.Now()
 		wrapped := &wrappedWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
-		next.ServeHTTP(wrapped, r.WithContext(ctx))
+		req := r.WithContext(ctx)
+		next.ServeHTTP(wrapped, req)
 
 		duration := time.Since(start).Seconds()
 		statusCode := wrapped.statusCode
+
+		// ServeMux populates req.Pattern during routing; prefer it over the
+		// raw path to keep span names and metric labels low-cardinality.
+		route := r.URL.Path
+		if req.Pattern != "" {
+			route = req.Pattern
+			span.SetName(fmt.Sprintf("%s %s", r.Method, route))
+		}
 
 		// Record span status
 		span.SetAttributes(semconv.HTTPResponseStatusCode(statusCode))
@@ -55,12 +68,9 @@ func Telemetry(next http.Handler) http.Handler {
 		attrOpt := otelmetric.WithAttributes(
 			semconv.HTTPRequestMethodKey.String(r.Method),
 			semconv.HTTPResponseStatusCode(statusCode),
-			attribute.String("http.route", r.URL.Path),
+			attribute.String("http.route", route),
 		)
 		metrics.HTTPRequestsTotal.Add(ctx, 1, attrOpt)
 		metrics.HTTPRequestDuration.Record(ctx, duration, attrOpt)
-
-		// Inject trace context into response headers
-		propagation.TraceContext{}.Inject(ctx, propagation.HeaderCarrier(w.Header()))
 	})
 }

@@ -116,6 +116,9 @@ metadata:
     managed-by: activations-accelerator
     feature: bigquery-analytics
 spec:
+  # BigQuery dataset IDs only allow letters, digits, and underscores, so the
+  # hyphenated Kubernetes metadata.name cannot be used as the dataset ID.
+  resourceID: {{ bqID (default "analytics" .DatasetID) }}
   friendlyName: {{ .ProjectName }} Analytics Dataset
   description: {{ default "Analytics dataset" .DatasetDescription }}
   location: {{ .Region }}
@@ -157,6 +160,6 @@ spec:
   displayName: {{ .ProjectName }} Data Transfer
   location: {{ .Region }}
   dataSourceID: {{ default "google_cloud_storage" .DataSourceType }}
-  destinationDatasetID: {{ default "analytics" .DatasetID }}
+  destinationDatasetID: {{ bqID (default "analytics" .DatasetID) }}
   schedule: "every 24 hours"
 `

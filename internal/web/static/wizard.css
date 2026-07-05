@@ -120,3 +120,124 @@
 article > footer .grid {
     align-items: center;
 }
+
+/* ── Component layer ──────────────────────────────────────────────────────
+   Minimal replacements for the daisyUI components and Tailwind utilities
+   the wizard markup uses, styled with Pico CSS variables so light/dark
+   themes stay consistent. Pico is the only vendored framework. */
+
+/* Alerts */
+.alert {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--pico-muted-border-color);
+    border-radius: var(--pico-border-radius);
+    background: var(--pico-card-background-color);
+}
+.alert-info {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+}
+.alert-warning {
+    border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.12);
+}
+.alert svg {
+    width: 1.5rem;
+    height: 1.5rem;
+    flex-shrink: 0;
+    stroke: currentColor;
+}
+
+/* Badges */
+.badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    vertical-align: middle;
+}
+.badge-success {
+    background: #36d399;
+    color: #003320;
+}
+.badge-sm {
+    font-size: 0.7rem;
+    padding: 0.1rem 0.4rem;
+}
+
+/* Collapsible sections (checkbox-toggled, daisyUI markup shape) */
+.collapse {
+    position: relative;
+    border: 1px solid var(--pico-muted-border-color);
+    border-radius: var(--pico-border-radius);
+    overflow: hidden;
+}
+.collapse > input[type="checkbox"] {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3rem;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 1;
+}
+.collapse-title {
+    padding: 0.75rem 2.5rem 0.75rem 1rem;
+}
+.collapse-arrow > .collapse-title::after {
+    content: "";
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
+    transition: transform 0.2s;
+}
+.collapse > input[type="checkbox"]:checked ~ .collapse-title::after {
+    transform: rotate(225deg);
+}
+.collapse-content {
+    display: none;
+    padding: 0 1rem 1rem;
+}
+.collapse > input[type="checkbox"]:checked ~ .collapse-content {
+    display: block;
+}
+.bg-base-200 {
+    background: var(--pico-card-sectioning-background-color, var(--pico-card-background-color));
+}
+
+/* Tables (Pico styles table basics; add zebra + compact variants) */
+.table {
+    width: 100%;
+}
+.table-zebra tbody tr:nth-child(even) {
+    background: var(--pico-table-row-stripped-background-color, rgba(128, 128, 128, 0.06));
+}
+.table-sm th,
+.table-sm td {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* Text and layout utilities */
+.text-lg { font-size: 1.125rem; }
+.text-sm { font-size: 0.875rem; }
+.text-xs { font-size: 0.75rem; }
+.text-right { text-align: right; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+.opacity-70 { opacity: 0.7; }
+.mb-2 { margin-bottom: 0.5rem; }
+.overflow-x-auto { overflow-x: auto; }
+.w-6 { width: 1.5rem; }
+.h-6 { height: 1.5rem; }
+.shrink-0 { flex-shrink: 0; }
+.stroke-current { stroke: currentColor; }
