@@ -74,3 +74,26 @@ func TestLoad_AuthEnabledWithAudiences(t *testing.T) {
 		t.Errorf("expected 1 domain, got %d", len(cfg.AuthAllowedDomains))
 	}
 }
+
+func TestLoad_InvalidPricingProvider(t *testing.T) {
+	t.Setenv("PRICING_PROVIDER", "bogus")
+	if _, err := config.Load(); err == nil {
+		t.Fatal("expected error for invalid pricing provider")
+	}
+}
+
+func TestLoad_DefaultsForProviderAndOTLP(t *testing.T) {
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.PricingProvider != "static" {
+		t.Errorf("expected default pricing provider static, got %q", cfg.PricingProvider)
+	}
+	if cfg.OTLPEndpoint != "" {
+		t.Errorf("expected empty OTLP endpoint by default, got %q", cfg.OTLPEndpoint)
+	}
+	if cfg.AuthEnabled {
+		t.Error("auth should be disabled by default")
+	}
+}
