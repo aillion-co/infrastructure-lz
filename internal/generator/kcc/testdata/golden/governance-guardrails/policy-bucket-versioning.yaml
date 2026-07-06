@@ -1,0 +1,45 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: gcpbucketversioning
+  labels:
+    managed-by: activations-accelerator
+    feature: governance-guardrails
+  annotations:
+    description: "Require object versioning on Cloud Storage buckets (recoverability)"
+spec:
+  crd:
+    spec:
+      names:
+        kind: GcpBucketVersioning
+      validation:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package gcpbucketversioning
+
+        violation[{"msg": msg}] {
+          input.review.object.kind == "StorageBucket"
+          not input.review.object.spec.versioning.enabled == true
+          msg := "StorageBucket must enable object versioning (spec.versioning.enabled)"
+        }
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: GcpBucketVersioning
+metadata:
+  name: bucket-versioning
+  labels:
+    managed-by: activations-accelerator
+    feature: governance-guardrails
+  annotations:
+    compliance.aillion.co/regimes: "eucra,iso27001,nis2"
+    description: "Require object versioning on Cloud Storage buckets (recoverability)"
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["*"]
+        kinds: ["StorageBucket"]

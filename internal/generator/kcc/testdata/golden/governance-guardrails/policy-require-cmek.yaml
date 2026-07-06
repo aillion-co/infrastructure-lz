@@ -1,0 +1,60 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: gcprequirecmek
+  labels:
+    managed-by: activations-accelerator
+    feature: governance-guardrails
+  annotations:
+    description: "Require customer-managed encryption keys on storage, BigQuery, and Cloud SQL"
+spec:
+  crd:
+    spec:
+      names:
+        kind: GcpRequireCmek
+      validation:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package gcprequirecmek
+
+        violation[{"msg": msg}] {
+          obj := input.review.object
+          obj.kind == "StorageBucket"
+          not obj.spec.encryption.kmsKeyRef
+          msg := "StorageBucket must reference a customer-managed KMS key (spec.encryption.kmsKeyRef)"
+        }
+
+        violation[{"msg": msg}] {
+          obj := input.review.object
+          obj.kind == "BigQueryDataset"
+          not obj.spec.defaultEncryptionConfiguration.kmsKeyRef
+          msg := "BigQueryDataset must reference a customer-managed KMS key (spec.defaultEncryptionConfiguration.kmsKeyRef)"
+        }
+
+        violation[{"msg": msg}] {
+          obj := input.review.object
+          obj.kind == "SQLInstance"
+          not obj.spec.encryptionKMSCryptoKeyRef
+          msg := "SQLInstance must reference a customer-managed KMS key (spec.encryptionKMSCryptoKeyRef)"
+        }
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: GcpRequireCmek
+metadata:
+  name: require-cmek
+  labels:
+    managed-by: activations-accelerator
+    feature: governance-guardrails
+  annotations:
+    compliance.aillion.co/regimes: "gdpr,iso27001,nis2,pci-dss"
+    description: "Require customer-managed encryption keys on storage, BigQuery, and Cloud SQL"
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["*"]
+        kinds: ["StorageBucket", "BigQueryDataset", "SQLInstance"]

@@ -6,7 +6,7 @@ metadata:
   annotations:
     cnrm.cloud.google.com/project-id: acme-analytics-prod
 spec:
-  member: group:data-analysts@acme.com
+  member: "group:data-analysts@acme.com"
   role: roles/bigquery.dataViewer
   resourceRef:
     kind: Project

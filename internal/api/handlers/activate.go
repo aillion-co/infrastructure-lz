@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"regexp"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -35,12 +36,13 @@ func (h *ActivateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	limitBody(w, r)
 	var req models.ActivationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "invalid request body")
 		slog.ErrorContext(ctx, "failed to decode activation request", "error", err)
-		http.Error(w, fmt.Sprintf("invalid request body: %s", err), http.StatusBadRequest)
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
@@ -89,21 +91,38 @@ func (h *ActivateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// customerNamePattern constrains the customer name to a safe slug. It feeds
+// both YAML scalars and zip entry paths in the generated chart, so it must
+// contain no path separators, whitespace, or YAML-structural characters.
+var customerNamePattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{1,29}[a-z0-9])?$`)
+
 func validateActivationRequest(req *models.ActivationRequest) []string {
 	var errs []string
 
 	if req.Customer.CustomerName == "" {
 		errs = append(errs, "customer name is required")
+	} else if !customerNamePattern.MatchString(req.Customer.CustomerName) {
+		errs = append(errs, "customer name must be 2-31 characters of lowercase letters, digits, and hyphens")
 	}
 	if req.Customer.ContactEmail == "" {
 		errs = append(errs, "contact email is required")
 	}
 
+	known := make(map[models.FeatureID]bool)
+	for _, id := range models.AllFeatureIDs() {
+		known[id] = true
+	}
+
 	enabled := make(map[models.FeatureID]bool, len(req.Features))
 	for _, f := range req.Features {
-		if f.Enabled {
-			enabled[f.FeatureID] = true
+		if !f.Enabled {
+			continue
 		}
+		if !known[f.FeatureID] {
+			errs = append(errs, fmt.Sprintf("unknown feature %q", f.FeatureID))
+			continue
+		}
+		enabled[f.FeatureID] = true
 	}
 	if len(enabled) == 0 {
 		errs = append(errs, "at least one feature must be enabled")

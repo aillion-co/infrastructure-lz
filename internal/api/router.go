@@ -12,8 +12,9 @@ import (
 
 // RouterConfig holds configuration for the API router.
 type RouterConfig struct {
-	AuthEnabled    bool
-	AllowedDomains []string
+	AuthEnabled      bool
+	AllowedDomains   []string
+	AllowedAudiences []string
 }
 
 func NewRouter(activationGen *generator.ActivationGenerator, pricer pricing.Provider, cfg ...RouterConfig) http.Handler {
@@ -41,21 +42,22 @@ func NewRouter(activationGen *generator.ActivationGenerator, pricer pricing.Prov
 	mux.HandleFunc("GET /activate", webHandler.ActivateHandler)
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("internal/web/static"))))
 
-	// Build middleware chain (order: outermost runs first)
+	// Build middleware chain (order: outermost runs first). Auth is inside
+	// Logging so that rejected (401/403) requests are still access-logged.
 	var handler http.Handler = mux
-	handler = middleware.Logging(handler)
 
-	// Auth middleware (optional, configurable)
 	var authCfg middleware.AuthConfig
 	if len(cfg) > 0 {
 		authCfg = middleware.AuthConfig{
-			Enabled:        cfg[0].AuthEnabled,
-			AllowedDomains: cfg[0].AllowedDomains,
-			SkipPaths:      []string{"/healthz", "/readyz", "/", "/activate", "/static/"},
+			Enabled:          cfg[0].AuthEnabled,
+			AllowedDomains:   cfg[0].AllowedDomains,
+			AllowedAudiences: cfg[0].AllowedAudiences,
+			SkipPaths:        []string{"/healthz", "/readyz", "/", "/activate", "/static/"},
 		}
 	}
 	handler = middleware.Auth(authCfg)(handler)
 
+	handler = middleware.Logging(handler)
 	handler = middleware.Telemetry(handler)
 	handler = middleware.Recovery(handler)
 

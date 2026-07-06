@@ -1,9 +1,6 @@
 package kcc
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/aillion-co/infrastructure-lz/internal/models"
 )
 
@@ -61,25 +58,24 @@ func (b *bigqueryAnalyticsBuilder) Build(config interface{}) ([]Resource, error)
 }
 
 func toBigQueryConfig(config interface{}) (*models.BigQueryAnalyticsConfig, error) {
-	cfg, ok := config.(*models.BigQueryAnalyticsConfig)
-	if !ok {
-		data, err := json.Marshal(config)
-		if err != nil {
-			return nil, fmt.Errorf("marshalling bigquery config: %w", err)
-		}
-		cfg = &models.BigQueryAnalyticsConfig{}
-		if err := json.Unmarshal(data, cfg); err != nil {
-			return nil, fmt.Errorf("unmarshalling bigquery config: %w", err)
-		}
+	cfg, err := decodeConfig[models.BigQueryAnalyticsConfig]("bigquery-analytics", config)
+	if err != nil {
+		return nil, err
 	}
-	if cfg.ProjectID == "" {
-		return nil, newValidationError("bigquery-analytics", "projectId", "is required")
+	if err := requireName("bigquery-analytics", "projectId", cfg.ProjectID); err != nil {
+		return nil, err
 	}
-	if cfg.ProjectName == "" {
-		return nil, newValidationError("bigquery-analytics", "projectName", "is required")
+	if err := requireName("bigquery-analytics", "projectName", cfg.ProjectName); err != nil {
+		return nil, err
 	}
-	if cfg.Region == "" {
-		return nil, newValidationError("bigquery-analytics", "region", "is required")
+	if err := requireName("bigquery-analytics", "region", cfg.Region); err != nil {
+		return nil, err
+	}
+	if err := validateOptionalID("bigquery-analytics", "datasetId", cfg.DatasetID); err != nil {
+		return nil, err
+	}
+	if err := validateOptionalID("bigquery-analytics", "dataSourceType", cfg.DataSourceType); err != nil {
+		return nil, err
 	}
 	return cfg, nil
 }
@@ -120,7 +116,7 @@ spec:
   # hyphenated Kubernetes metadata.name cannot be used as the dataset ID.
   resourceID: {{ bqID (default "analytics" .DatasetID) }}
   friendlyName: {{ .ProjectName }} Analytics Dataset
-  description: {{ default "Analytics dataset" .DatasetDescription }}
+  description: {{ yamlStr (default "Analytics dataset" .DatasetDescription) }}
   location: {{ .Region }}
 {{- if .DefaultTableExpMS }}
   defaultTableExpirationMs: {{ .DefaultTableExpMS }}
@@ -142,7 +138,7 @@ metadata:
   annotations:
     cnrm.cloud.google.com/project-id: {{ .ProjectID }}
 spec:
-  member: group:{{ .DataViewerGroup }}
+  member: {{ yamlStr (printf "group:%s" .DataViewerGroup) }}
   role: roles/bigquery.dataViewer
   resourceRef:
     kind: Project

@@ -40,6 +40,11 @@ type AuthConfig struct {
 	// Empty means all authenticated users are allowed.
 	AllowedDomains []string
 
+	// AllowedAudiences is the set of OAuth client IDs the token's aud claim
+	// must match. Without it, a token minted for any client would be
+	// accepted (a confused-deputy risk).
+	AllowedAudiences []string
+
 	// SkipPaths are paths that bypass authentication (e.g., /healthz).
 	SkipPaths []string
 
@@ -80,7 +85,7 @@ func Auth(cfg AuthConfig) func(http.Handler) http.Handler {
 				return
 			}
 
-			user, err := validateToken(ctx, token)
+			user, err := validateToken(ctx, token, cfg.AllowedAudiences)
 			if err != nil {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, "invalid token")
@@ -127,8 +132,9 @@ func extractBearerToken(r *http.Request) string {
 	return strings.TrimPrefix(auth, "Bearer ")
 }
 
-// validateToken validates a Google ID token using the tokeninfo endpoint.
-func validateToken(ctx context.Context, token string) (*UserInfo, error) {
+// validateToken validates a Google ID token using the tokeninfo endpoint
+// and verifies its audience claim against allowedAudiences.
+func validateToken(ctx context.Context, token string, allowedAudiences []string) (*UserInfo, error) {
 	ctx, span := telemetry.Tracer().Start(ctx, "middleware.Auth.validateToken")
 	defer span.End()
 
@@ -164,12 +170,30 @@ func validateToken(ctx context.Context, token string) (*UserInfo, error) {
 		return nil, fmt.Errorf("email not verified: %s", info.Email)
 	}
 
+	// Verify the audience so a token minted for a different OAuth client
+	// cannot be replayed against this service.
+	if !audienceAllowed(info.Audience, allowedAudiences) {
+		return nil, fmt.Errorf("token audience %q is not accepted", info.Audience)
+	}
+
 	return &UserInfo{
 		Email:  info.Email,
 		Name:   info.Name,
 		Sub:    info.Sub,
 		Issuer: info.Issuer,
 	}, nil
+}
+
+func audienceAllowed(aud string, allowed []string) bool {
+	if aud == "" {
+		return false
+	}
+	for _, a := range allowed {
+		if aud == a {
+			return true
+		}
+	}
+	return false
 }
 
 func emailDomain(email string) string {

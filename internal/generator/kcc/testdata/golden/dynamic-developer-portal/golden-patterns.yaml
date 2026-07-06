@@ -1,0 +1,346 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backstage-golden-patterns
+  namespace: backstage
+  labels:
+    app.kubernetes.io/part-of: developer-portal
+    feature: dynamic-developer-portal
+data:
+  three-tier-web-app.yaml: |
+    apiVersion: scaffolder.backstage.io/v1beta3
+    kind: Template
+    metadata:
+      name: three-tier-web-app
+      title: Three-Tier Web Application
+      description: External HTTPS load balancer fronting Cloud Run services with a private-IP Cloud SQL backend, CMEK encryption end to end
+      tags: [gcp, golden-path, cis, pci-dss]
+      annotations:
+        compliance.aillion.co/regimes: cis,pci-dss
+        compliance.aillion.co/guardrails: no-public-iam,require-cmek,sql-no-public-ip,firewall-no-open-ingress
+        aillion.co/components: External HTTPS LB, Cloud Run, Cloud SQL (private IP), Cloud KMS, Cloud Armor
+    spec:
+      owner: platform-team
+      type: architecture-pattern
+      parameters:
+        - title: Service details
+          required: [name, environment]
+          properties:
+            name:
+              title: Service name
+              type: string
+              description: Lowercase name for the new service
+            environment:
+              title: Target environment
+              type: string
+              enum: [dev, test, prod]
+              default: dev
+      steps:
+        - id: fetch
+          name: Fetch pattern skeleton
+          action: fetch:template
+          input:
+            url: ./skeletons/three-tier-web-app
+            values:
+              name: ${{ parameters.name }}
+              environment: ${{ parameters.environment }}
+              gcpProjectId: acme-devportal-prod
+              gcpRegion: us-central1
+        - id: publish
+          name: Publish to repository
+          action: publish:github
+          input:
+            repoUrl: github.com?repo=${{ parameters.name }}&owner=platform-team
+        - id: register
+          name: Register in catalog
+          action: catalog:register
+          input:
+            repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+            catalogInfoPath: /catalog-info.yaml
+  serverless-event-driven.yaml: |
+    apiVersion: scaffolder.backstage.io/v1beta3
+    kind: Template
+    metadata:
+      name: serverless-event-driven
+      title: Serverless Event-Driven Processing
+      description: Pub/Sub-triggered Cloud Run workers writing to versioned Cloud Storage with uniform access controls
+      tags: [gcp, golden-path, cis, iso27001]
+      annotations:
+        compliance.aillion.co/regimes: cis,iso27001
+        compliance.aillion.co/guardrails: no-public-iam,storage-uniform-access,bucket-versioning
+        aillion.co/components: Pub/Sub, Cloud Run, Eventarc, Cloud Storage, Firestore
+    spec:
+      owner: platform-team
+      type: architecture-pattern
+      parameters:
+        - title: Service details
+          required: [name, environment]
+          properties:
+            name:
+              title: Service name
+              type: string
+              description: Lowercase name for the new service
+            environment:
+              title: Target environment
+              type: string
+              enum: [dev, test, prod]
+              default: dev
+      steps:
+        - id: fetch
+          name: Fetch pattern skeleton
+          action: fetch:template
+          input:
+            url: ./skeletons/serverless-event-driven
+            values:
+              name: ${{ parameters.name }}
+              environment: ${{ parameters.environment }}
+              gcpProjectId: acme-devportal-prod
+              gcpRegion: us-central1
+        - id: publish
+          name: Publish to repository
+          action: publish:github
+          input:
+            repoUrl: github.com?repo=${{ parameters.name }}&owner=platform-team
+        - id: register
+          name: Register in catalog
+          action: catalog:register
+          input:
+            repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+            catalogInfoPath: /catalog-info.yaml
+  data-platform-eu.yaml: |
+    apiVersion: scaffolder.backstage.io/v1beta3
+    kind: Template
+    metadata:
+      name: data-platform-eu
+      title: EU Data Platform
+      description: BigQuery warehouse with Dataflow ingestion pinned to approved EU regions, CMEK on every store, and mandatory data-classification labels
+      tags: [gcp, golden-path, gdpr, iso27001, nis2]
+      annotations:
+        compliance.aillion.co/regimes: gdpr,iso27001,nis2
+        compliance.aillion.co/guardrails: require-cmek,allowed-regions,required-labels,storage-uniform-access
+        aillion.co/components: BigQuery (CMEK), Dataflow, Cloud Storage (EU), Data Catalog, Cloud KMS
+    spec:
+      owner: platform-team
+      type: architecture-pattern
+      parameters:
+        - title: Service details
+          required: [name, environment]
+          properties:
+            name:
+              title: Service name
+              type: string
+              description: Lowercase name for the new service
+            environment:
+              title: Target environment
+              type: string
+              enum: [dev, test, prod]
+              default: dev
+      steps:
+        - id: fetch
+          name: Fetch pattern skeleton
+          action: fetch:template
+          input:
+            url: ./skeletons/data-platform-eu
+            values:
+              name: ${{ parameters.name }}
+              environment: ${{ parameters.environment }}
+              gcpProjectId: acme-devportal-prod
+              gcpRegion: us-central1
+        - id: publish
+          name: Publish to repository
+          action: publish:github
+          input:
+            repoUrl: github.com?repo=${{ parameters.name }}&owner=platform-team
+        - id: register
+          name: Register in catalog
+          action: catalog:register
+          input:
+            repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+            catalogInfoPath: /catalog-info.yaml
+  private-gke-microservices.yaml: |
+    apiVersion: scaffolder.backstage.io/v1beta3
+    kind: Template
+    metadata:
+      name: private-gke-microservices
+      title: Private GKE Microservices
+      description: Private-node GKE with Workload Identity, Binary Authorization, and internal load balancing only
+      tags: [gcp, golden-path, cis, nis2, pci-dss]
+      annotations:
+        compliance.aillion.co/regimes: cis,nis2,pci-dss
+        compliance.aillion.co/guardrails: gke-private-cluster,gke-workload-identity,binary-authorization,firewall-no-open-ingress
+        aillion.co/components: GKE (private nodes), Workload Identity, Binary Authorization, Internal LB, Artifact Registry
+    spec:
+      owner: platform-team
+      type: architecture-pattern
+      parameters:
+        - title: Service details
+          required: [name, environment]
+          properties:
+            name:
+              title: Service name
+              type: string
+              description: Lowercase name for the new service
+            environment:
+              title: Target environment
+              type: string
+              enum: [dev, test, prod]
+              default: dev
+      steps:
+        - id: fetch
+          name: Fetch pattern skeleton
+          action: fetch:template
+          input:
+            url: ./skeletons/private-gke-microservices
+            values:
+              name: ${{ parameters.name }}
+              environment: ${{ parameters.environment }}
+              gcpProjectId: acme-devportal-prod
+              gcpRegion: us-central1
+        - id: publish
+          name: Publish to repository
+          action: publish:github
+          input:
+            repoUrl: github.com?repo=${{ parameters.name }}&owner=platform-team
+        - id: register
+          name: Register in catalog
+          action: catalog:register
+          input:
+            repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+            catalogInfoPath: /catalog-info.yaml
+  secure-ml-inference.yaml: |
+    apiVersion: scaffolder.backstage.io/v1beta3
+    kind: Template
+    metadata:
+      name: secure-ml-inference
+      title: Secure ML Inference
+      description: Vertex AI models served through a private LiteLLM proxy with Secret Manager key handling, EU residency, and attested supply chain
+      tags: [gcp, golden-path, eucra, gdpr, nis2]
+      annotations:
+        compliance.aillion.co/regimes: eucra,gdpr,nis2
+        compliance.aillion.co/guardrails: no-public-iam,require-cmek,allowed-regions,binary-authorization
+        aillion.co/components: Vertex AI, Cloud Run (LiteLLM), Secret Manager, VPC-SC, Cloud KMS
+    spec:
+      owner: platform-team
+      type: architecture-pattern
+      parameters:
+        - title: Service details
+          required: [name, environment]
+          properties:
+            name:
+              title: Service name
+              type: string
+              description: Lowercase name for the new service
+            environment:
+              title: Target environment
+              type: string
+              enum: [dev, test, prod]
+              default: dev
+      steps:
+        - id: fetch
+          name: Fetch pattern skeleton
+          action: fetch:template
+          input:
+            url: ./skeletons/secure-ml-inference
+            values:
+              name: ${{ parameters.name }}
+              environment: ${{ parameters.environment }}
+              gcpProjectId: acme-devportal-prod
+              gcpRegion: us-central1
+        - id: publish
+          name: Publish to repository
+          action: publish:github
+          input:
+            repoUrl: github.com?repo=${{ parameters.name }}&owner=platform-team
+        - id: register
+          name: Register in catalog
+          action: catalog:register
+          input:
+            repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+            catalogInfoPath: /catalog-info.yaml
+  regulated-payments.yaml: |
+    apiVersion: scaffolder.backstage.io/v1beta3
+    kind: Template
+    metadata:
+      name: regulated-payments
+      title: Regulated Payments Processing
+      description: PCI-scoped processing on private GKE with shielded nodes, CMEK everywhere, and no public network paths
+      tags: [gcp, golden-path, iso27001, pci-dss]
+      annotations:
+        compliance.aillion.co/regimes: iso27001,pci-dss
+        compliance.aillion.co/guardrails: no-public-iam,require-cmek,sql-no-public-ip,gke-private-cluster,firewall-no-open-ingress,shielded-vms
+        aillion.co/components: GKE (private, shielded), Cloud SQL (private IP), Cloud KMS, Cloud HSM, VPC-SC
+    spec:
+      owner: platform-team
+      type: architecture-pattern
+      parameters:
+        - title: Service details
+          required: [name, environment]
+          properties:
+            name:
+              title: Service name
+              type: string
+              description: Lowercase name for the new service
+            environment:
+              title: Target environment
+              type: string
+              enum: [dev, test, prod]
+              default: dev
+      steps:
+        - id: fetch
+          name: Fetch pattern skeleton
+          action: fetch:template
+          input:
+            url: ./skeletons/regulated-payments
+            values:
+              name: ${{ parameters.name }}
+              environment: ${{ parameters.environment }}
+              gcpProjectId: acme-devportal-prod
+              gcpRegion: us-central1
+        - id: publish
+          name: Publish to repository
+          action: publish:github
+          input:
+            repoUrl: github.com?repo=${{ parameters.name }}&owner=platform-team
+        - id: register
+          name: Register in catalog
+          action: catalog:register
+          input:
+            repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+            catalogInfoPath: /catalog-info.yaml
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backstage-app-config-patterns
+  namespace: backstage
+  labels:
+    app.kubernetes.io/part-of: developer-portal
+    feature: dynamic-developer-portal
+data:
+  app-config.golden-patterns.yaml: |
+    catalog:
+      locations:
+        - type: file
+          target: /golden-patterns/three-tier-web-app.yaml
+          rules:
+            - allow: [Template]
+        - type: file
+          target: /golden-patterns/serverless-event-driven.yaml
+          rules:
+            - allow: [Template]
+        - type: file
+          target: /golden-patterns/data-platform-eu.yaml
+          rules:
+            - allow: [Template]
+        - type: file
+          target: /golden-patterns/private-gke-microservices.yaml
+          rules:
+            - allow: [Template]
+        - type: file
+          target: /golden-patterns/secure-ml-inference.yaml
+          rules:
+            - allow: [Template]
+        - type: file
+          target: /golden-patterns/regulated-payments.yaml
+          rules:
+            - allow: [Template]

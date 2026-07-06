@@ -6,7 +6,7 @@ metadata:
 spec:
   sourceFormat: unstructured
   git:
-    repo: git@github.com:acme-corp/platform-config.git
+    repo: "git@github.com:acme-corp/platform-config.git"
     branch: main
     dir: /config
     auth: ssh

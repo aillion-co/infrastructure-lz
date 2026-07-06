@@ -1,0 +1,45 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: gcpgkeworkloadidentity
+  labels:
+    managed-by: activations-accelerator
+    feature: governance-guardrails
+  annotations:
+    description: "Require Workload Identity on GKE clusters instead of node service account keys"
+spec:
+  crd:
+    spec:
+      names:
+        kind: GcpGkeWorkloadIdentity
+      validation:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package gcpgkeworkloadidentity
+
+        violation[{"msg": msg}] {
+          input.review.object.kind == "ContainerCluster"
+          not input.review.object.spec.workloadIdentityConfig
+          msg := "ContainerCluster must configure Workload Identity (spec.workloadIdentityConfig)"
+        }
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: GcpGkeWorkloadIdentity
+metadata:
+  name: gke-workload-identity
+  labels:
+    managed-by: activations-accelerator
+    feature: governance-guardrails
+  annotations:
+    compliance.aillion.co/regimes: "cis,iso27001"
+    description: "Require Workload Identity on GKE clusters instead of node service account keys"
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["*"]
+        kinds: ["ContainerCluster"]

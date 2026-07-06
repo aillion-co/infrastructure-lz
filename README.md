@@ -22,7 +22,8 @@ A Go web application that generates Infrastructure-as-Code configurations for Go
 |---------|-------------|
 | **Bootstrap Organisation** | GCP org structure, management project, CI/CD, folder hierarchy, org policies, workload environments |
 | **BigQuery Analytics** | BigQuery datasets with CRM or Google Analytics integrations |
-| **Dynamic Developer Portal** | Backstage portal with Config Controller for GitOps-driven infrastructure |
+| **Dynamic Developer Portal** | Backstage portal with Config Controller, shipping golden GCP architecture patterns aligned with the governance regimes |
+| **Governance Guardrails** | OPA Gatekeeper policies via GKE Policy Controller with selectable compliance regimes (CIS, GDPR, PCI DSS, ISO 27001, NIS2, EU CRA) |
 | **Hardened Image Bakery** | CIS-compliant hardened VM images using Packer/Ansible + Cloud Build |
 | **Secure Inferencing** | LiteLLM AI proxy for standardised LLM access with audit logging |
 | **Skaffold Application Development** | Kubernetes application scaffold with Skaffold, CIS security, multi-env overlays |
@@ -93,9 +94,13 @@ make docker-run
 | `PORT` | HTTP server port | `8080` |
 | `LOG_LEVEL` | Logging level (`debug`, `info`, `warn`, `error`) | `info` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | OpenTelemetry collector endpoint (empty = disabled) | — |
-| `GCP_PROJECT_ID` | GCP project for preview deploys | — |
-| `GKE_CLUSTER` | GKE cluster name | — |
-| `GKE_REGION` | GKE cluster region | — |
+| `PRICING_PROVIDER` | Cost estimate backend: `static` or `catalog` (GCP Billing Catalog API) | `static` |
+| `AUTH_ENABLED` | Enforce Google ID token auth on API endpoints | `false` |
+| `AUTH_ALLOWED_AUDIENCES` | Comma-separated OAuth client IDs accepted in the token `aud` claim (required when auth is enabled) | — |
+| `AUTH_ALLOWED_DOMAINS` | Comma-separated email domains permitted (empty = any authenticated user) | — |
+
+> `GCP_PROJECT_ID`, `GKE_CLUSTER`, and `GKE_REGION` are used only by the
+> CI/CD workflows for deploys; the server does not read them.
 
 ---
 
@@ -221,6 +226,57 @@ make deploy-production
 ```
 
 Production runs with 3 replicas, autoscaling to 10 at 70% CPU.
+
+---
+
+## Applying the Generated Landing Zone
+
+The zip this service produces is a **Helm umbrella chart of Google Config
+Connector (KCC) resources**, with a sub-chart per activated feature plus a
+governance sub-chart (OPA Gatekeeper policies and Policy Controller
+enablement). Applying it to a cluster has its own prerequisites, separate
+from running this generator.
+
+### Prerequisites on the target
+
+- A GKE cluster (or Config Controller instance) with **Config Connector
+  installed** — the KCC CRDs (`*.cnrm.cloud.google.com`) must exist, and
+  its service account must have the IAM roles to create the requested
+  resources (projects, folders, IAM, networking, etc.).
+- The cluster **registered to a GKE Hub fleet** as the membership named in
+  the governance feature's `membershipId` (default `config-controller`);
+  the governance sub-chart installs Policy Controller onto that membership,
+  which requires the **Anthos/GKE Enterprise entitlement** and the
+  `gkehub` / `anthospolicycontroller` APIs enabled.
+- `helm` v3 and `kubectl` configured against the target cluster.
+- For the developer portal's golden patterns to scaffold real services,
+  populate the referenced skeleton repositories (`./skeletons/<pattern-id>`)
+  in your Backstage source repo — the chart ships the `Template` catalog
+  entries, not the skeleton contents.
+
+### Steps
+
+```bash
+# 1. Unzip the downloaded activation
+unzip <customer>-activation.zip -d landing-zone && cd landing-zone
+
+# 2. Inspect what will be applied (no cluster changes)
+helm template <customer>-activation/
+
+# 3. Install (or upgrade) the landing zone
+helm upgrade --install <customer> <customer>-activation/ \
+  --namespace config-connector
+
+# 4. Selectively disable a feature at install time if needed
+#    (each feature is gated by <feature>.enabled in values.yaml)
+helm upgrade --install <customer> <customer>-activation/ \
+  --set governance_guardrails.enabled=false
+```
+
+Config Connector then reconciles the KCC resources into GCP. Once Policy
+Controller is installed, the governance constraints enforce at admission —
+roll out with the feature's `enforcementMode: dryrun` first to observe
+violations before switching to `deny`.
 
 ---
 

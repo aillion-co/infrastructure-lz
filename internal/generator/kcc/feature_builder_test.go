@@ -168,9 +168,10 @@ func TestDeveloperPortalBuilder_Build(t *testing.T) {
 		t.Fatalf("Build failed: %v", err)
 	}
 
-	// APIs + config-controller + backstage-namespace + backstage-workloads + config-sync
-	if len(resources) != 5 {
-		t.Errorf("expected 5 resources, got %d", len(resources))
+	// APIs + config-controller + backstage-namespace + backstage-workloads
+	// + golden-patterns + config-sync
+	if len(resources) != 6 {
+		t.Errorf("expected 6 resources, got %d", len(resources))
 	}
 
 	for _, r := range resources {
@@ -358,4 +359,123 @@ func TestBigQueryAnalyticsBuilder_HyphenatedDatasetID_SanitizedResourceID(t *tes
 		return
 	}
 	t.Fatal("bq-dataset.yaml not generated")
+}
+
+// TestGoldenPatternCatalog_ConsistentWithGovernance guarantees every regime
+// and guardrail a pattern claims actually exists in the governance catalog,
+// so the two libraries cannot drift apart.
+func TestGoldenPatternCatalog_ConsistentWithGovernance(t *testing.T) {
+	guardrails := map[string]bool{}
+	for _, p := range governanceCatalog {
+		guardrails[p.ID] = true
+	}
+
+	seen := map[string]bool{}
+	for _, p := range goldenPatternCatalog {
+		if seen[p.ID] {
+			t.Errorf("duplicate golden pattern ID %s", p.ID)
+		}
+		seen[p.ID] = true
+
+		if len(p.Regimes) == 0 {
+			t.Errorf("pattern %s declares no regimes", p.ID)
+		}
+		for _, r := range p.Regimes {
+			if _, ok := governanceRegimes[r]; !ok {
+				t.Errorf("pattern %s references unknown regime %s", p.ID, r)
+			}
+		}
+		if len(p.Guardrails) == 0 {
+			t.Errorf("pattern %s declares no guardrails", p.ID)
+		}
+		for _, g := range p.Guardrails {
+			if !guardrails[g] {
+				t.Errorf("pattern %s references unknown guardrail %s", p.ID, g)
+			}
+		}
+	}
+}
+
+// TestGoldenPatternCatalog_EveryRegimeHasAPattern ensures each selectable
+// regime is served by at least one out-of-the-box pattern.
+func TestGoldenPatternCatalog_EveryRegimeHasAPattern(t *testing.T) {
+	covered := map[string]bool{}
+	for _, p := range goldenPatternCatalog {
+		for _, r := range p.Regimes {
+			covered[r] = true
+		}
+	}
+	for regime := range governanceRegimes {
+		if !covered[regime] {
+			t.Errorf("no golden pattern covers regime %s", regime)
+		}
+	}
+}
+
+func TestDeveloperPortalBuilder_IncludesGoldenPatterns(t *testing.T) {
+	builder := NewDeveloperPortalBuilder()
+	resources, err := builder.Build(&models.DeveloperPortalConfig{
+		ProjectName:  "acme-portal",
+		GCPProjectID: "acme-portal-001",
+		GCPRegion:    "europe-west2",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	for _, r := range resources {
+		if r.Name != "golden-patterns.yaml" {
+			continue
+		}
+		content := string(r.Content)
+		for _, want := range []string{
+			"scaffolder.backstage.io/v1beta3",
+			"backstage-golden-patterns",
+			"three-tier-web-app",
+			"regulated-payments",
+			"compliance.aillion.co/regimes",
+			"gcpProjectId: acme-portal-001",
+		} {
+			if !strings.Contains(content, want) {
+				t.Errorf("golden-patterns.yaml missing %q", want)
+			}
+		}
+		return
+	}
+	t.Fatal("golden-patterns.yaml not generated")
+}
+
+func TestDeveloperPortalBuilder_DeploysBackstageAndMountsPatterns(t *testing.T) {
+	resources, err := NewDeveloperPortalBuilder().Build(&models.DeveloperPortalConfig{
+		ProjectName:  "acme-portal",
+		GCPProjectID: "acme-portal-001",
+		GCPRegion:    "europe-west2",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var workloads string
+	for _, r := range resources {
+		if r.Name == "backstage-workloads.yaml" {
+			workloads = string(r.Content)
+		}
+	}
+	if workloads == "" {
+		t.Fatal("backstage-workloads.yaml not generated")
+	}
+
+	// The portal must actually run Backstage (not just a database) and mount
+	// the golden-pattern ConfigMaps, or the patterns can never surface.
+	for _, want := range []string{
+		"name: backstage\n",
+		"configMap:\n            name: backstage-golden-patterns",
+		"configMap:\n            name: backstage-app-config-patterns",
+		"mountPath: /golden-patterns",
+		"app-config.golden-patterns.yaml",
+	} {
+		if !strings.Contains(workloads, want) {
+			t.Errorf("backstage-workloads.yaml missing %q", want)
+		}
+	}
 }

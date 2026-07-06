@@ -1,6 +1,7 @@
 package helm
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -69,4 +70,71 @@ func TestBuildActivation_UmbrellaStructure(t *testing.T) {
 	valuesYAML := paths["acme-corp-activation/values.yaml"]
 	assert.Contains(t, valuesYAML, "bootstrap_org:")
 	assert.Contains(t, valuesYAML, "bigquery_analytics:")
+}
+
+func TestSlugify_StripsPathTraversalAndUnsafeChars(t *testing.T) {
+	cases := map[string]string{
+		"Acme Corp":   "acme-corp",
+		"../../evil":  "evil",
+		"a/b/c":       "a-b-c",
+		"UPPER_case":  "upper-case",
+		"  trim  ":    "trim",
+		"!!!":         "customer",
+		"good-name-1": "good-name-1",
+	}
+	for in, want := range cases {
+		if got := slugify(in); got != want {
+			t.Errorf("slugify(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestBuildActivation_ZipPathsHaveNoTraversal(t *testing.T) {
+	req := &models.ActivationRequest{
+		Customer: models.CustomerDetails{CustomerName: "../../etc"},
+	}
+	resources := map[models.FeatureID][]kcc.Resource{
+		models.FeatureBootstrapOrg: {{Name: "folder.yaml", Content: []byte("kind: Folder\n")}},
+	}
+	files, err := NewActivationBuilder().BuildActivation(req, resources)
+	require.NoError(t, err)
+	for _, f := range files {
+		if strings.Contains(f.Path, "..") {
+			t.Errorf("zip entry path contains traversal: %q", f.Path)
+		}
+	}
+}
+
+func TestEscapeHelmDelimiters_RoundTrips(t *testing.T) {
+	in := "url: ./skeletons/${{ parameters.name }}\nvalue: {{ .Release.Name }}"
+	out := escapeHelmDelimiters(in)
+	if strings.Contains(out, "${{ parameters.name }}") {
+		t.Error("raw Backstage syntax should be escaped")
+	}
+	// Helm rendering the escape yields the original literal.
+	if !strings.Contains(out, `{{ "{{" }}`) || !strings.Contains(out, `{{ "}}" }}`) {
+		t.Errorf("expected escaped delimiters, got: %s", out)
+	}
+}
+
+func TestBuildActivation_EscapesTemplateSyntaxInSubcharts(t *testing.T) {
+	req := &models.ActivationRequest{
+		Customer: models.CustomerDetails{CustomerName: "acme"},
+	}
+	resources := map[models.FeatureID][]kcc.Resource{
+		models.FeatureDeveloperPortal: {
+			{Name: "patterns.yaml", Content: []byte("target: ${{ parameters.name }}\n")},
+		},
+	}
+	files, err := NewActivationBuilder().BuildActivation(req, resources)
+	require.NoError(t, err)
+	for _, f := range files {
+		if strings.HasSuffix(f.Path, "patterns.yaml") {
+			if strings.Contains(string(f.Content), "${{ parameters.name }}") {
+				t.Error("sub-chart template must escape Backstage/Helm delimiters")
+			}
+			return
+		}
+	}
+	t.Fatal("patterns.yaml not placed in a sub-chart")
 }

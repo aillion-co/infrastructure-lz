@@ -1,9 +1,6 @@
 package kcc
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/aillion-co/infrastructure-lz/internal/models"
 )
 
@@ -53,6 +50,10 @@ func (b *developerPortalBuilder) Build(config interface{}) ([]Resource, error) {
 	}
 	resources = append(resources, Resource{Name: "backstage-workloads.yaml", Content: res})
 
+	// Golden architecture pattern catalog, aligned with the governance
+	// regimes, shipped in the portal out of the box.
+	resources = append(resources, Resource{Name: "golden-patterns.yaml", Content: renderGoldenPatterns(cfg)})
+
 	// Config Sync
 	if cfg.GitRepoSSH != "" {
 		res, err = renderTemplate("config-sync.yaml", portalConfigSync, cfg)
@@ -66,26 +67,28 @@ func (b *developerPortalBuilder) Build(config interface{}) ([]Resource, error) {
 }
 
 func toDeveloperPortalConfig(config interface{}) (*models.DeveloperPortalConfig, error) {
-	cfg, ok := config.(*models.DeveloperPortalConfig)
-	if !ok {
-		data, err := json.Marshal(config)
-		if err != nil {
-			return nil, fmt.Errorf("marshalling developer-portal config: %w", err)
-		}
-		cfg = &models.DeveloperPortalConfig{}
-		if err := json.Unmarshal(data, cfg); err != nil {
-			return nil, fmt.Errorf("unmarshalling developer-portal config: %w", err)
-		}
+	cfg, err := decodeConfig[models.DeveloperPortalConfig]("dynamic-developer-portal", config)
+	if err != nil {
+		return nil, err
 	}
-	if cfg.ProjectName == "" {
-		return nil, newValidationError("dynamic-developer-portal", "projectName", "is required")
+	const feature = "dynamic-developer-portal"
+	if err := requireName(feature, "projectName", cfg.ProjectName); err != nil {
+		return nil, err
 	}
-	if cfg.GCPProjectID == "" {
-		return nil, newValidationError("dynamic-developer-portal", "gcpProjectId", "is required")
+	if err := requireName(feature, "gcpProjectId", cfg.GCPProjectID); err != nil {
+		return nil, err
 	}
-	if cfg.GCPRegion == "" {
-		return nil, newValidationError("dynamic-developer-portal", "gcpRegion", "is required")
+	if err := requireName(feature, "gcpRegion", cfg.GCPRegion); err != nil {
+		return nil, err
 	}
+	if err := validateOptionalName(feature, "gcpNetwork", cfg.GCPNetwork); err != nil {
+		return nil, err
+	}
+	if err := validateOptionalName(feature, "gcpSubnet", cfg.GCPSubnet); err != nil {
+		return nil, err
+	}
+	// GitRepoSSH is a URL (contains ':' '@' '/') and is YAML-quoted at
+	// render time; the control-character guard already blocks line breaks.
 	return cfg, nil
 }
 
@@ -241,6 +244,93 @@ spec:
   ports:
     - port: 5432
       targetPort: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backstage
+  namespace: backstage
+  labels:
+    app: backstage
+    app.kubernetes.io/part-of: developer-portal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backstage
+  template:
+    metadata:
+      labels:
+        app: backstage
+    spec:
+      containers:
+        - name: backstage
+          image: {{ yamlStr (default "ghcr.io/backstage/backstage:latest" .BackstageImage) }}
+          # Load the base config plus the golden-pattern catalog fragment so
+          # the shipped architecture patterns register on startup.
+          args:
+            - "--config"
+            - "/app/app-config.yaml"
+            - "--config"
+            - "/app-config-patterns/app-config.golden-patterns.yaml"
+          ports:
+            - containerPort: 7007
+          env:
+            - name: POSTGRES_HOST
+              value: postgres
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_USER
+              value: backstage
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            # Backstage scaffolder Template entities, one file per pattern.
+            - name: golden-patterns
+              mountPath: /golden-patterns
+              readOnly: true
+            # app-config fragment registering the patterns as catalog locations.
+            - name: app-config-patterns
+              mountPath: /app-config-patterns
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 7007
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+      volumes:
+        - name: golden-patterns
+          configMap:
+            name: backstage-golden-patterns
+        - name: app-config-patterns
+          configMap:
+            name: backstage-app-config-patterns
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backstage
+  namespace: backstage
+  labels:
+    app: backstage
+spec:
+  selector:
+    app: backstage
+  ports:
+    - name: http
+      port: 80
+      targetPort: 7007
 `
 
 const portalConfigSync = `apiVersion: configsync.gke.io/v1beta1
@@ -251,7 +341,7 @@ metadata:
 spec:
   sourceFormat: unstructured
   git:
-    repo: {{ .GitRepoSSH }}
+    repo: {{ yamlStr .GitRepoSSH }}
     branch: main
     dir: /config
     auth: ssh

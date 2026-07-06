@@ -13,6 +13,7 @@ type healthResponse struct {
 	Commit  string `json:"commit"`
 }
 
+// Healthz reports liveness with the build version and commit.
 func Healthz(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(healthResponse{
@@ -22,6 +23,7 @@ func Healthz(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// Readyz reports readiness to serve traffic.
 func Readyz(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(healthResponse{

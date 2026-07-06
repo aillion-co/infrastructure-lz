@@ -85,7 +85,7 @@ func TestActivate_BootstrapOrgOnly(t *testing.T) {
 	assertValidUmbrellaChart(t, zipData, "integ-bootstrap", []string{"bootstrap-org"})
 }
 
-// TestActivate_AllFeatures enables all six features with valid config and
+// TestActivate_AllFeatures enables all seven features with valid config and
 // asserts the resulting zip contains a sub-chart per feature plus the expected
 // KCC kinds.
 func TestActivate_AllFeatures(t *testing.T) {
@@ -130,6 +130,15 @@ func TestActivate_AllFeatures(t *testing.T) {
 			},
 		},
 		{
+			"featureId": "governance-guardrails",
+			"enabled":   true,
+			"config": map[string]any{
+				"projectId":       "integ-mgmt-001",
+				"regimes":         []string{"cis", "gdpr", "pci-dss", "iso27001", "nis2", "eucra"},
+				"enforcementMode": "deny",
+			},
+		},
+		{
 			"featureId": "secure-inferencing",
 			"enabled":   true,
 			"config": map[string]any{
@@ -161,6 +170,7 @@ func TestActivate_AllFeatures(t *testing.T) {
 		"bootstrap-org",
 		"bigquery-analytics",
 		"dynamic-developer-portal",
+		"governance-guardrails",
 		"hardened-image-bakery",
 		"secure-inferencing",
 		"skaffold-application-development",
@@ -171,6 +181,10 @@ func TestActivate_AllFeatures(t *testing.T) {
 	assertZipContains(t, zipData, "BigQueryDataset")
 	assertZipContains(t, zipData, "ContainerCluster")
 	assertZipContains(t, zipData, "RunService")
+	assertZipContains(t, zipData, "ConstraintTemplate")
+	assertZipContains(t, zipData, "GKEHubFeature")
+	assertZipContains(t, zipData, "scaffolder.backstage.io/v1beta3")
+	assertZipContains(t, zipData, "backstage-golden-patterns")
 }
 
 // TestActivate_FeatureValidationError exercises the ValidationError -> HTTP 400
@@ -384,6 +398,7 @@ func TestFeatures_API(t *testing.T) {
 		"bootstrap-org":                    false,
 		"bigquery-analytics":               false,
 		"dynamic-developer-portal":         false,
+		"governance-guardrails":            false,
 		"hardened-image-bakery":            false,
 		"secure-inferencing":               false,
 		"skaffold-application-development": false,

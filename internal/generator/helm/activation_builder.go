@@ -40,15 +40,16 @@ func (b *ActivationBuilder) BuildActivation(req *models.ActivationRequest, resou
       condition: %s.enabled`, string(fid), sanitizeHelmKey(string(fid))))
 	}
 
+	customer := req.Customer.CustomerName
 	chartYAML := fmt.Sprintf(`apiVersion: v2
 name: %s
-description: GCP Landing Zone activation for %s
+description: %s
 type: application
 version: 0.1.0
 appVersion: "1.0.0"
 dependencies:
 %s
-`, chartName, req.Customer.CustomerName, strings.Join(deps, "\n"))
+`, chartName, yamlQuote("GCP Landing Zone activation for "+customer), strings.Join(deps, "\n"))
 
 	files = append(files, FileEntry{
 		Path:    path.Join(chartName, "Chart.yaml"),
@@ -57,8 +58,8 @@ dependencies:
 
 	// Root values.yaml with feature toggles and cross-references
 	var valuesLines []string
-	valuesLines = append(valuesLines, fmt.Sprintf("# Activation values for %s", req.Customer.CustomerName))
-	valuesLines = append(valuesLines, fmt.Sprintf("customerName: %s", req.Customer.CustomerName))
+	valuesLines = append(valuesLines, fmt.Sprintf("# Activation values for %s", chartName))
+	valuesLines = append(valuesLines, fmt.Sprintf("customerName: %s", yamlQuote(customer)))
 	valuesLines = append(valuesLines, "")
 	for _, fid := range featureIDs {
 		key := sanitizeHelmKey(string(fid))
@@ -117,11 +118,15 @@ feature: %s
 			Content: []byte(helpers),
 		})
 
-		// KCC resource files in templates/
+		// KCC resource files in templates/. These are static manifests, but
+		// Helm treats every file under templates/ as a Go template, so any
+		// literal "{{"/"}}" in the content (e.g. Backstage scaffolder
+		// "${{ ... }}" syntax) must be escaped or `helm install`/`helm
+		// template` fails. Helm renders the escape back to the literal.
 		for _, res := range resources {
 			files = append(files, FileEntry{
 				Path:    path.Join(subChartPath, "templates", res.Name),
-				Content: res.Content,
+				Content: []byte(escapeHelmDelimiters(string(res.Content))),
 			})
 		}
 	}
@@ -129,15 +134,77 @@ feature: %s
 	return files, nil
 }
 
+// slugify converts a customer name into a filesystem- and YAML-safe slug.
+// It keeps only lowercase letters, digits, and hyphens so the result can be
+// used both as a zip entry path (no "/" or ".." — prevents zip-slip) and as
+// an unquoted YAML scalar. Runs of unsafe characters collapse to a single
+// hyphen and leading/trailing hyphens are trimmed.
 func slugify(name string) string {
-	s := strings.ToLower(name)
-	s = strings.ReplaceAll(s, " ", "-")
-	s = strings.ReplaceAll(s, "_", "-")
+	var b strings.Builder
+	lastHyphen := false
+	for _, r := range strings.ToLower(name) {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+			lastHyphen = false
+		default:
+			if !lastHyphen {
+				b.WriteByte('-')
+				lastHyphen = true
+			}
+		}
+	}
+	s := strings.Trim(b.String(), "-")
+	if s == "" {
+		return "customer"
+	}
 	return s
 }
 
 func sanitizeHelmKey(featureID string) string {
 	return strings.ReplaceAll(featureID, "-", "_")
+}
+
+// helmDelimiterEscaper rewrites literal Go-template delimiters into Helm
+// escape expressions. strings.Replacer does not re-scan its own output, so
+// the "}}" introduced by the "{{" replacement is not double-escaped.
+var helmDelimiterEscaper = strings.NewReplacer(
+	"{{", `{{ "{{" }}`,
+	"}}", `{{ "}}" }}`,
+)
+
+// escapeHelmDelimiters escapes "{{"/"}}" so static content placed under a
+// Helm chart's templates/ directory renders back to the original literal.
+func escapeHelmDelimiters(s string) string {
+	if !strings.Contains(s, "{{") && !strings.Contains(s, "}}") {
+		return s
+	}
+	return helmDelimiterEscaper.Replace(s)
+}
+
+// yamlQuote renders a string as a safe double-quoted YAML scalar so that
+// user-supplied values cannot alter document structure.
+func yamlQuote(s string) string {
+	var b strings.Builder
+	b.WriteByte('"')
+	for _, r := range s {
+		switch r {
+		case '\\':
+			b.WriteString(`\\`)
+		case '"':
+			b.WriteString(`\"`)
+		case '\n':
+			b.WriteString(`\n`)
+		case '\r':
+			b.WriteString(`\r`)
+		case '\t':
+			b.WriteString(`\t`)
+		default:
+			b.WriteRune(r)
+		}
+	}
+	b.WriteByte('"')
+	return b.String()
 }
 
 func featureDisplayName(fid models.FeatureID) string {

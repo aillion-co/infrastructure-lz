@@ -14,6 +14,8 @@ permissions:
 env:
   GO_VERSION: "1.25"
   GOLANGCI_LINT_VERSION: "v2.5"
+  # Minimum total statement coverage the test job enforces.
+  MIN_COVERAGE: "70"
 
 jobs:
   lint:
@@ -48,6 +50,15 @@ jobs:
       - name: Run unit tests
         run: |
           go test -race -coverprofile=coverage.out -covermode=atomic ./...
+
+      - name: Enforce coverage threshold
+        run: |
+          total=$(go tool cover -func=coverage.out | awk '/^total:/ {print $3}' | tr -d '%')
+          echo "Total coverage: ${total}% (minimum ${MIN_COVERAGE}%)"
+          awk -v t="$total" -v m="$MIN_COVERAGE" 'BEGIN { exit (t+0 < m+0) ? 1 : 0 }' || {
+            echo "::error::Coverage ${total}% is below the required ${MIN_COVERAGE}%"
+            exit 1
+          }
 
       - name: Upload coverage
         if: github.event_name == 'pull_request'
@@ -132,6 +143,37 @@ jobs:
 
           kill "$SERVER_PID" 2>/dev/null || true
 
+  e2e-test:
+    name: E2E Test (local)
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Download server binary
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries
+          path: bin/
+
+      - name: Start server and run e2e tests
+        run: |
+          chmod +x bin/server
+          OTEL_EXPORTER_OTLP_ENDPOINT="" PORT=8082 bin/server &
+          SERVER_PID=$!
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8082/healthz > /dev/null 2>&1; then break; fi
+            if [ "$i" -eq 30 ]; then echo "Server failed to start"; kill "$SERVER_PID" 2>/dev/null || true; exit 1; fi
+            sleep 1
+          done
+          E2E_BASE_URL=http://localhost:8082 \
+            go test -v -race -tags=e2e -count=1 -timeout=5m ./test/e2e/...
+          kill "$SERVER_PID" 2>/dev/null || true
+
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -155,21 +197,56 @@ jobs:
   validate-helm:
     name: Validate Helm Charts
     runs-on: ubuntu-latest
+    needs: [build]
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
 
       - uses: azure/setup-helm@v4
         with:
           version: v3.16.0
 
-      - name: Lint Helm chart
+      - name: Lint application Helm chart
         run: helm lint deploy/helm/iac-generator/
+
+      - name: Download server binary
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries
+          path: bin/
+
+      - name: Lint and template a generated activation chart
+        run: |
+          chmod +x bin/server
+          OTEL_EXPORTER_OTLP_ENDPOINT="" PORT=8083 bin/server &
+          SERVER_PID=$!
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8083/healthz > /dev/null 2>&1; then break; fi
+            if [ "$i" -eq 30 ]; then echo "Server failed to start"; kill "$SERVER_PID" 2>/dev/null || true; exit 1; fi
+            sleep 1
+          done
+
+          # Generate a full-feature activation and validate the umbrella chart.
+          curl -sf -X POST http://localhost:8083/api/v1/activate \
+            -H 'Content-Type: application/json' \
+            --data @test/fixtures/activation-all-features.json \
+            -o activation.zip
+          kill "$SERVER_PID" 2>/dev/null || true
+
+          mkdir -p generated && unzip -q activation.zip -d generated
+          CHART_DIR=$(find generated -maxdepth 1 -type d -name '*-activation')
+          echo "Validating generated chart: $CHART_DIR"
+          helm lint "$CHART_DIR"
+          helm template "$CHART_DIR" > /dev/null
 
   merge-gate:
     name: Merge Gate
     runs-on: ubuntu-latest
     if: always()
-    needs: [lint, test, build, integration-test, validate-helm]
+    needs: [lint, test, build, integration-test, e2e-test, validate-helm]
     steps:
       - name: Check all required jobs passed
         run: |
@@ -177,12 +254,14 @@ jobs:
           echo "Test: ${{ needs.test.result }}"
           echo "Build: ${{ needs.build.result }}"
           echo "Integration Test: ${{ needs.integration-test.result }}"
+          echo "E2E Test: ${{ needs.e2e-test.result }}"
           echo "Validate Helm: ${{ needs.validate-helm.result }}"
 
           if [ "${{ needs.lint.result }}" != "success" ] || \
              [ "${{ needs.test.result }}" != "success" ] || \
              [ "${{ needs.build.result }}" != "success" ] || \
              [ "${{ needs.integration-test.result }}" != "success" ] || \
+             [ "${{ needs.e2e-test.result }}" != "success" ] || \
              [ "${{ needs.validate-helm.result }}" != "success" ]; then
             echo "One or more required checks failed"
             exit 1

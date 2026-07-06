@@ -193,3 +193,214 @@ func TestBigQueryAnalyticsConfig_Validation(t *testing.T) {
 		})
 	}
 }
+
+func TestGovernanceConfig_Validation(t *testing.T) {
+	base := func() *models.GovernanceConfig {
+		return &models.GovernanceConfig{
+			ProjectID: "mgmt-proj",
+			Regimes:   []string{"cis", "gdpr"},
+		}
+	}
+
+	tests := []struct {
+		name      string
+		mutate    func(*models.GovernanceConfig)
+		wantField string
+	}{
+		{"missing projectId", func(c *models.GovernanceConfig) { c.ProjectID = "" }, "projectId"},
+		{"no regimes", func(c *models.GovernanceConfig) { c.Regimes = nil }, "regimes"},
+		{"unknown regime", func(c *models.GovernanceConfig) { c.Regimes = []string{"soc2"} }, "regimes"},
+		{"bad enforcement mode", func(c *models.GovernanceConfig) { c.EnforcementMode = "warn" }, "enforcementMode"},
+	}
+
+	builder := NewGovernanceBuilder()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := base()
+			tt.mutate(cfg)
+			_, err := builder.Build(cfg)
+			var verr *ValidationError
+			if !errors.As(err, &verr) {
+				t.Fatalf("expected ValidationError, got %v", err)
+			}
+			if verr.Field != tt.wantField {
+				t.Errorf("expected field %q, got %q", tt.wantField, verr.Field)
+			}
+		})
+	}
+}
+
+func TestGovernanceBuilder_RegimeSelection(t *testing.T) {
+	builder := NewGovernanceBuilder()
+
+	// CIS only: no data-residency or CMEK policies, but public-IAM and
+	// firewall guardrails present.
+	resources, err := builder.Build(&models.GovernanceConfig{
+		ProjectID: "mgmt-proj",
+		Regimes:   []string{"cis"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	names := map[string]bool{}
+	for _, r := range resources {
+		names[r.Name] = true
+	}
+	for _, want := range []string{"policycontroller.yaml", "regime-manifest.yaml", "policy-no-public-iam.yaml", "policy-firewall-no-open-ingress.yaml"} {
+		if !names[want] {
+			t.Errorf("cis selection missing %s (got %v)", want, names)
+		}
+	}
+	for _, absent := range []string{"policy-allowed-regions.yaml", "policy-require-cmek.yaml", "policy-binary-authorization.yaml"} {
+		if names[absent] {
+			t.Errorf("cis selection unexpectedly includes %s", absent)
+		}
+	}
+
+	// GDPR adds residency and CMEK.
+	resources, err = builder.Build(&models.GovernanceConfig{
+		ProjectID: "mgmt-proj",
+		Regimes:   []string{"gdpr"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	names = map[string]bool{}
+	for _, r := range resources {
+		names[r.Name] = true
+	}
+	for _, want := range []string{"policy-allowed-regions.yaml", "policy-require-cmek.yaml", "policy-required-labels.yaml"} {
+		if !names[want] {
+			t.Errorf("gdpr selection missing %s", want)
+		}
+	}
+}
+
+func TestGovernanceBuilder_EnforcementMode(t *testing.T) {
+	builder := NewGovernanceBuilder()
+
+	resources, err := builder.Build(&models.GovernanceConfig{
+		ProjectID:       "mgmt-proj",
+		Regimes:         []string{"cis"},
+		EnforcementMode: "dryrun",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	for _, r := range resources {
+		if !strings.HasPrefix(r.Name, "policy-") {
+			continue
+		}
+		if !strings.Contains(string(r.Content), "enforcementAction: dryrun") {
+			t.Errorf("%s should carry enforcementAction: dryrun", r.Name)
+		}
+	}
+}
+
+func TestInjection_NewlineInStringFieldRejected(t *testing.T) {
+	builder := NewBigQueryAnalyticsBuilder()
+	_, err := builder.Build(&models.BigQueryAnalyticsConfig{
+		ProjectName:        "acme",
+		ProjectID:          "acme-1",
+		Region:             "eu",
+		DatasetDescription: "legit\n---\nkind: IAMPolicyMember\nspec:\n  member: allUsers",
+	})
+	var verr *ValidationError
+	if !errors.As(err, &verr) {
+		t.Fatalf("expected ValidationError for newline injection, got %v", err)
+	}
+	if verr.Field != "datasetDescription" {
+		t.Errorf("expected field datasetDescription, got %q", verr.Field)
+	}
+}
+
+func TestInjection_YamlStructuralCharInIdentifierRejected(t *testing.T) {
+	builder := NewBootstrapOrgBuilder()
+	_, err := builder.Build(&models.BootstrapOrgConfig{
+		CustomerName:   "acme: evil",
+		WorkloadName:   "web",
+		RootLevel:      "organization",
+		RootID:         "123",
+		BillingAccount: "AAAAAA-BBBBBB-CCCCCC",
+		Region:         "us-central1",
+		Envs:           "dev",
+	})
+	var verr *ValidationError
+	if !errors.As(err, &verr) || verr.Field != "customerName" {
+		t.Fatalf("expected customerName ValidationError, got %v", err)
+	}
+}
+
+func TestInjection_BenignFreeTextIsQuotedNotBroken(t *testing.T) {
+	builder := NewBigQueryAnalyticsBuilder()
+	resources, err := builder.Build(&models.BigQueryAnalyticsConfig{
+		ProjectName:        "acme",
+		ProjectID:          "acme-1",
+		Region:             "eu",
+		DatasetDescription: "Customer: Acme Corp",
+	})
+	if err != nil {
+		t.Fatalf("benign free text should be accepted: %v", err)
+	}
+	for _, r := range resources {
+		if r.Name == "bq-dataset.yaml" {
+			if !strings.Contains(string(r.Content), `description: "Customer: Acme Corp"`) {
+				t.Errorf("free-text description should be YAML-quoted, got:\n%s", r.Content)
+			}
+			return
+		}
+	}
+	t.Fatal("bq-dataset.yaml not generated")
+}
+
+func TestGovernanceBuilder_InstallsPolicyController(t *testing.T) {
+	resources, err := NewGovernanceBuilder().Build(&models.GovernanceConfig{
+		ProjectID: "mgmt-proj",
+		Regimes:   []string{"cis"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	for _, r := range resources {
+		if r.Name != "policycontroller.yaml" {
+			continue
+		}
+		content := string(r.Content)
+		for _, want := range []string{
+			"kind: GKEHubFeatureMembership",
+			"installSpec: INSTALL_SPEC_ENABLED",
+			"membershipRef:",
+			"featureRef:",
+		} {
+			if !strings.Contains(content, want) {
+				t.Errorf("policycontroller.yaml missing %q — guardrails would not enforce", want)
+			}
+		}
+		return
+	}
+	t.Fatal("policycontroller.yaml not generated")
+}
+
+func TestGovernance_SqlAndFirewallRegoSemantics(t *testing.T) {
+	resources, err := NewGovernanceBuilder().Build(&models.GovernanceConfig{
+		ProjectID: "mgmt-proj",
+		Regimes:   []string{"cis"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	got := map[string]string{}
+	for _, r := range resources {
+		got[r.Name] = string(r.Content)
+	}
+	// sql-no-public-ip must catch the omitted-field default (public IP).
+	if !strings.Contains(got["policy-sql-no-public-ip.yaml"], "ipv4Enabled == false") {
+		t.Error("sql-no-public-ip should require ipv4Enabled explicitly false")
+	}
+	// firewall rule must only flag allow-rules, not deny-rules.
+	if !strings.Contains(got["policy-firewall-no-open-ingress.yaml"], "obj.spec.allow") {
+		t.Error("firewall-no-open-ingress should scope to allow-rules")
+	}
+}

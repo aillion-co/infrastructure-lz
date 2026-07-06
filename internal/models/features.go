@@ -34,6 +34,27 @@ type BootstrapOrgConfig struct {
 	GKECluster bool   `json:"gkeCluster"`
 }
 
+// GovernanceConfig configures the OPA Gatekeeper governance guardrails.
+type GovernanceConfig struct {
+	ProjectID string `json:"projectId"`
+	// Regimes selects which compliance regimes to enforce. Valid values:
+	// cis, gdpr, pci-dss, iso27001, nis2, eucra.
+	Regimes []string `json:"regimes"`
+	// EnforcementMode is "deny" (reject non-compliant resources) or
+	// "dryrun" (audit only). Defaults to "deny".
+	EnforcementMode string `json:"enforcementMode,omitempty"`
+	// AllowedRegions is a comma-separated list of approved regions for the
+	// data-residency guardrail. Defaults to EU regions.
+	AllowedRegions string `json:"allowedRegions,omitempty"`
+	// RequiredLabels is a comma-separated list of labels every resource
+	// must carry. Defaults to "data-classification,owner".
+	RequiredLabels string `json:"requiredLabels,omitempty"`
+	// MembershipID is the GKE Hub membership (registered cluster) that
+	// Policy Controller is installed onto so the guardrails are enforced.
+	// Defaults to "config-controller" (the landing zone's config cluster).
+	MembershipID string `json:"membershipId,omitempty"`
+}
+
 // BigQueryAnalyticsConfig configures BigQuery dataset deployment.
 type BigQueryAnalyticsConfig struct {
 	ProjectName             string `json:"projectName"`
@@ -57,6 +78,9 @@ type DeveloperPortalConfig struct {
 	GCPNetwork   string `json:"gcpNetwork,omitempty"`
 	GCPSubnet    string `json:"gcpSubnet,omitempty"`
 	GitRepoSSH   string `json:"gitRepoSshUrl"`
+	// BackstageImage is the container image for the Backstage application.
+	// Customers typically build their own; defaults to the community image.
+	BackstageImage string `json:"backstageImage,omitempty"`
 }
 
 // HardenedImageBakeryConfig configures the CIS-hardened image pipeline.

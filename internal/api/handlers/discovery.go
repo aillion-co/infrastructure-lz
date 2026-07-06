@@ -33,6 +33,7 @@ func HandleDiscoveryEvaluate() http.HandlerFunc {
 		ctx, span := telemetry.Tracer().Start(r.Context(), "handlers.DiscoveryEvaluate")
 		defer span.End()
 
+		limitBody(w, r)
 		var req models.DiscoveryResponse
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			span.RecordError(err)
@@ -108,20 +109,37 @@ func evaluateDiscovery(resp *models.DiscoveryResponse) []FeatureRecommendation {
 	}
 	recs = append(recs, bqRec)
 
-	// developer-portal: GitOps tooling (VCS + build pipeline) suggests a
-	// Backstage portal for self-service infrastructure management.
+	// developer-portal: always recommended — the Backstage portal ships the
+	// golden architecture pattern catalog with every landing zone.
 	dpRec := FeatureRecommendation{
 		FeatureID:   models.FeatureDeveloperPortal,
-		Recommended: false,
-		Confidence:  "low",
-		Reason:      "No developer portal requirements detected",
+		Recommended: true,
+		Confidence:  "medium",
+		Reason:      "The Backstage portal ships golden architecture patterns aligned with your governance regimes",
 	}
 	if resp.IACCICD.VCS != "" && resp.IACCICD.BuildPipeline != "" {
-		dpRec.Recommended = true
-		dpRec.Confidence = "medium"
-		dpRec.Reason = "VCS and build pipeline tooling indicate GitOps workflows that benefit from a developer portal"
+		dpRec.Confidence = "high"
+		dpRec.Reason = "VCS and build pipeline tooling indicate GitOps workflows; the portal adds golden patterns and self-service scaffolding"
 	}
 	recs = append(recs, dpRec)
+
+	// governance-guardrails: always recommended; confidence rises when the
+	// questionnaire signals an explicit compliance posture.
+	govRec := FeatureRecommendation{
+		FeatureID:   models.FeatureGovernance,
+		Recommended: true,
+		Confidence:  "medium",
+		Reason:      "Policy guardrails are recommended for every landing zone",
+	}
+	regulatedIndustry := resp.CustomerInfo.IndustryVertical == "financial-services" ||
+		resp.CustomerInfo.IndustryVertical == "public-sector" ||
+		resp.CustomerInfo.IndustryVertical == "healthcare"
+	hasResidency := resp.Security.RegionalRestrictions != "" && resp.Security.RegionalRestrictions != "none"
+	if resp.Security.CMEK || hasResidency || regulatedIndustry {
+		govRec.Confidence = "high"
+		govRec.Reason = "Security and industry answers indicate compliance requirements (CMEK, data residency, or a regulated vertical)"
+	}
+	recs = append(recs, govRec)
 
 	// hardened-image-bakery: if Security mentions hardened images
 	hiRec := FeatureRecommendation{

@@ -1,9 +1,6 @@
 package kcc
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/aillion-co/infrastructure-lz/internal/models"
 )
 
@@ -66,25 +63,35 @@ func (b *skaffoldAppDevBuilder) Build(config interface{}) ([]Resource, error) {
 }
 
 func toSkaffoldAppDevConfig(config interface{}) (*models.SkaffoldAppDevConfig, error) {
-	cfg, ok := config.(*models.SkaffoldAppDevConfig)
-	if !ok {
-		data, err := json.Marshal(config)
-		if err != nil {
-			return nil, fmt.Errorf("marshalling skaffold-app-dev config: %w", err)
+	cfg, err := decodeConfig[models.SkaffoldAppDevConfig]("skaffold-application-development", config)
+	if err != nil {
+		return nil, err
+	}
+	const feature = "skaffold-application-development"
+	if err := requireName(feature, "projectName", cfg.ProjectName); err != nil {
+		return nil, err
+	}
+	if err := requireName(feature, "serviceName", cfg.ServiceName); err != nil {
+		return nil, err
+	}
+	if err := requireName(feature, "region", cfg.Region); err != nil {
+		return nil, err
+	}
+	if err := validateOptionalName(feature, "serviceNamespace", cfg.ServiceNamespace); err != nil {
+		return nil, err
+	}
+	// Fixed-choice fields: validate they contain no YAML-structural
+	// characters even though the UI constrains them to enum values.
+	for field, val := range map[string]string{
+		"machineType":    cfg.MachineType,
+		"releaseChannel": cfg.ReleaseChannel,
+		"clusterType":    cfg.ClusterType,
+		"sqlDb":          cfg.SQLDB,
+		"allowIngress":   cfg.AllowIngress,
+	} {
+		if err := validateModel(feature, field, val); err != nil {
+			return nil, err
 		}
-		cfg = &models.SkaffoldAppDevConfig{}
-		if err := json.Unmarshal(data, cfg); err != nil {
-			return nil, fmt.Errorf("unmarshalling skaffold-app-dev config: %w", err)
-		}
-	}
-	if cfg.ProjectName == "" {
-		return nil, newValidationError("skaffold-application-development", "projectName", "is required")
-	}
-	if cfg.ServiceName == "" {
-		return nil, newValidationError("skaffold-application-development", "serviceName", "is required")
-	}
-	if cfg.Region == "" {
-		return nil, newValidationError("skaffold-application-development", "region", "is required")
 	}
 	return cfg, nil
 }

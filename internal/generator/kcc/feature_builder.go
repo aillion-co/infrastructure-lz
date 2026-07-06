@@ -28,6 +28,7 @@ func NewFeatureBuilderRegistry() *FeatureBuilderRegistry {
 	r.Register(NewBootstrapOrgBuilder())
 	r.Register(NewBigQueryAnalyticsBuilder())
 	r.Register(NewDeveloperPortalBuilder())
+	r.Register(NewGovernanceBuilder())
 	r.Register(NewHardenedImageBakeryBuilder())
 	r.Register(NewSecureInferencingBuilder())
 	r.Register(NewSkaffoldAppDevBuilder())
@@ -109,4 +110,7 @@ var templateFuncs = template.FuncMap{
 			}
 		}, s)
 	},
+	// yamlStr renders a value as a safe double-quoted YAML scalar. Use for
+	// free-text and URL fields that may contain YAML-structural characters.
+	"yamlStr": yamlScalar,
 }

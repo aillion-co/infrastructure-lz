@@ -1,0 +1,49 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: gcprequiredlabels
+  labels:
+    managed-by: activations-accelerator
+    feature: governance-guardrails
+  annotations:
+    description: "Require governance labels (e.g. data classification and owner) on all resources"
+spec:
+  crd:
+    spec:
+      names:
+        kind: GcpRequiredLabels
+      validation:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package gcprequiredlabels
+
+        violation[{"msg": msg}] {
+          required := input.parameters.labels[_]
+          not input.review.object.metadata.labels[required]
+          msg := sprintf("resource is missing required label %v", [required])
+        }
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: GcpRequiredLabels
+metadata:
+  name: required-labels
+  labels:
+    managed-by: activations-accelerator
+    feature: governance-guardrails
+  annotations:
+    compliance.aillion.co/regimes: "gdpr,iso27001,nis2"
+    description: "Require governance labels (e.g. data classification and owner) on all resources"
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["*"]
+        kinds: ["*"]
+  parameters:
+    labels:
+      - data-classification
+      - owner

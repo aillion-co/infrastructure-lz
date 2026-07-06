@@ -80,6 +80,17 @@ func (p *StaticProvider) EstimateFeature(_ context.Context, featureID models.Fea
 			MonthlyUSD: 25.06,
 		}
 
+	case models.FeatureGovernance:
+		return FeatureCost{
+			FeatureID:   featureID,
+			FeatureName: "Governance Guardrails",
+			Items: []LineItem{
+				{Resource: "GKE Policy Controller", Description: "Managed OPA Gatekeeper vCPU fee (config cluster)", MonthlyUSD: 8.00},
+				{Resource: "Constraint Library", Description: "Regime guardrail policies (no direct cost)", MonthlyUSD: 0},
+			},
+			MonthlyUSD: 8.00,
+		}
+
 	case models.FeatureSkaffoldAppDev:
 		return FeatureCost{
 			FeatureID:   featureID,
