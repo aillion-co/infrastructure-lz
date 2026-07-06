@@ -354,3 +354,31 @@ func TestInjection_BenignFreeTextIsQuotedNotBroken(t *testing.T) {
 	}
 	t.Fatal("bq-dataset.yaml not generated")
 }
+
+func TestGovernanceBuilder_InstallsPolicyController(t *testing.T) {
+	resources, err := NewGovernanceBuilder().Build(&models.GovernanceConfig{
+		ProjectID: "mgmt-proj",
+		Regimes:   []string{"cis"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	for _, r := range resources {
+		if r.Name != "policycontroller.yaml" {
+			continue
+		}
+		content := string(r.Content)
+		for _, want := range []string{
+			"kind: GKEHubFeatureMembership",
+			"installSpec: INSTALL_SPEC_ENABLED",
+			"membershipRef:",
+			"featureRef:",
+		} {
+			if !strings.Contains(content, want) {
+				t.Errorf("policycontroller.yaml missing %q — guardrails would not enforce", want)
+			}
+		}
+		return
+	}
+	t.Fatal("policycontroller.yaml not generated")
+}

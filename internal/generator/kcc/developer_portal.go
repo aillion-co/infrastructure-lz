@@ -244,6 +244,93 @@ spec:
   ports:
     - port: 5432
       targetPort: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backstage
+  namespace: backstage
+  labels:
+    app: backstage
+    app.kubernetes.io/part-of: developer-portal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backstage
+  template:
+    metadata:
+      labels:
+        app: backstage
+    spec:
+      containers:
+        - name: backstage
+          image: {{ yamlStr (default "ghcr.io/backstage/backstage:latest" .BackstageImage) }}
+          # Load the base config plus the golden-pattern catalog fragment so
+          # the shipped architecture patterns register on startup.
+          args:
+            - "--config"
+            - "/app/app-config.yaml"
+            - "--config"
+            - "/app-config-patterns/app-config.golden-patterns.yaml"
+          ports:
+            - containerPort: 7007
+          env:
+            - name: POSTGRES_HOST
+              value: postgres
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_USER
+              value: backstage
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            # Backstage scaffolder Template entities, one file per pattern.
+            - name: golden-patterns
+              mountPath: /golden-patterns
+              readOnly: true
+            # app-config fragment registering the patterns as catalog locations.
+            - name: app-config-patterns
+              mountPath: /app-config-patterns
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 7007
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+      volumes:
+        - name: golden-patterns
+          configMap:
+            name: backstage-golden-patterns
+        - name: app-config-patterns
+          configMap:
+            name: backstage-app-config-patterns
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backstage
+  namespace: backstage
+  labels:
+    app: backstage
+spec:
+  selector:
+    app: backstage
+  ports:
+    - name: http
+      port: 80
+      targetPort: 7007
 `
 
 const portalConfigSync = `apiVersion: configsync.gke.io/v1beta1

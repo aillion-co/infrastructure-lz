@@ -444,3 +444,38 @@ func TestDeveloperPortalBuilder_IncludesGoldenPatterns(t *testing.T) {
 	}
 	t.Fatal("golden-patterns.yaml not generated")
 }
+
+func TestDeveloperPortalBuilder_DeploysBackstageAndMountsPatterns(t *testing.T) {
+	resources, err := NewDeveloperPortalBuilder().Build(&models.DeveloperPortalConfig{
+		ProjectName:  "acme-portal",
+		GCPProjectID: "acme-portal-001",
+		GCPRegion:    "europe-west2",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var workloads string
+	for _, r := range resources {
+		if r.Name == "backstage-workloads.yaml" {
+			workloads = string(r.Content)
+		}
+	}
+	if workloads == "" {
+		t.Fatal("backstage-workloads.yaml not generated")
+	}
+
+	// The portal must actually run Backstage (not just a database) and mount
+	// the golden-pattern ConfigMaps, or the patterns can never surface.
+	for _, want := range []string{
+		"name: backstage\n",
+		"configMap:\n            name: backstage-golden-patterns",
+		"configMap:\n            name: backstage-app-config-patterns",
+		"mountPath: /golden-patterns",
+		"app-config.golden-patterns.yaml",
+	} {
+		if !strings.Contains(workloads, want) {
+			t.Errorf("backstage-workloads.yaml missing %q", want)
+		}
+	}
+}

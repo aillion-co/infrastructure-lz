@@ -49,6 +49,10 @@ type GovernanceConfig struct {
 	// RequiredLabels is a comma-separated list of labels every resource
 	// must carry. Defaults to "data-classification,owner".
 	RequiredLabels string `json:"requiredLabels,omitempty"`
+	// MembershipID is the GKE Hub membership (registered cluster) that
+	// Policy Controller is installed onto so the guardrails are enforced.
+	// Defaults to "config-controller" (the landing zone's config cluster).
+	MembershipID string `json:"membershipId,omitempty"`
 }
 
 // BigQueryAnalyticsConfig configures BigQuery dataset deployment.
@@ -74,6 +78,9 @@ type DeveloperPortalConfig struct {
 	GCPNetwork   string `json:"gcpNetwork,omitempty"`
 	GCPSubnet    string `json:"gcpSubnet,omitempty"`
 	GitRepoSSH   string `json:"gitRepoSshUrl"`
+	// BackstageImage is the container image for the Backstage application.
+	// Customers typically build their own; defaults to the community image.
+	BackstageImage string `json:"backstageImage,omitempty"`
 }
 
 // HardenedImageBakeryConfig configures the CIS-hardened image pipeline.

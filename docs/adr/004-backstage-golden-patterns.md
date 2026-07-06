@@ -20,10 +20,13 @@ catalog out of the box (`internal/generator/kcc/golden_patterns.go`):
 
 - **Delivery.** Patterns are Backstage scaffolder `Template` entities
   rendered into a `backstage-golden-patterns` ConfigMap, with an
-  `app-config` fragment registering each file as a catalog location. Both
-  mount into the Backstage pod, so the patterns appear in the portal as
-  soon as the landing zone deploys. The portal itself is now recommended
-  by default, so a standard activation includes the dashboard.
+  `app-config` fragment (`backstage-app-config-patterns`) registering each
+  file as a catalog location. The portal feature deploys a Backstage
+  application `Deployment`/`Service` that mounts the pattern ConfigMap at
+  `/golden-patterns` and loads the app-config fragment via `--config`, so
+  the patterns appear in the portal as soon as the landing zone deploys.
+  The portal itself is recommended by default, so a standard activation
+  includes the dashboard.
 - **Out-of-the-box patterns.** Three-tier web application, serverless
   event-driven processing, EU data platform, private GKE microservices,
   secure ML inference, and regulated payments processing — the most common

@@ -355,6 +355,12 @@ func toGovernanceConfig(config interface{}) (*models.GovernanceConfig, error) {
 		}
 	}
 
+	if cfg.MembershipID == "" {
+		cfg.MembershipID = "config-controller"
+	} else if err := requireName("governance-guardrails", "membershipId", cfg.MembershipID); err != nil {
+		return nil, err
+	}
+
 	return cfg, nil
 }
 
@@ -530,8 +536,12 @@ func splitCSVList(s string) []string {
 }
 
 // governancePolicyController enables the fleet Policy Controller feature —
-// Google-managed OPA Gatekeeper — plus its required APIs, so the guardrails
-// in this chart are admission-enforced on the config cluster.
+// Google-managed OPA Gatekeeper — its required APIs, and a
+// GKEHubFeatureMembership that actually installs Policy Controller onto the
+// target membership. Enabling the fleet feature alone does NOT install the
+// admission webhook; the membership config with installSpec
+// INSTALL_SPEC_ENABLED is what makes the ConstraintTemplates and
+// Constraints in this chart enforce at admission time.
 const governancePolicyController = `apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
 kind: Service
 metadata:
@@ -565,4 +575,37 @@ spec:
     external: projects/{{ .ProjectID }}
   location: global
   resourceID: policycontroller
+---
+apiVersion: gkehub.cnrm.cloud.google.com/v1beta1
+kind: GKEHubFeatureMembership
+metadata:
+  name: policycontroller-{{ .MembershipID }}
+  namespace: config-connector
+  labels:
+    managed-by: activations-accelerator
+    feature: governance-guardrails
+spec:
+  projectRef:
+    external: projects/{{ .ProjectID }}
+  location: global
+  membershipRef:
+    name: {{ .MembershipID }}
+  featureRef:
+    name: policycontroller
+  policycontroller:
+    policyControllerHubConfig:
+      # INSTALL_SPEC_ENABLED installs the Gatekeeper admission controller on
+      # the membership; without it the constraints in this chart never run.
+      installSpec: INSTALL_SPEC_ENABLED
+      auditIntervalSeconds: 60
+      referentialRulesEnabled: true
+      logDeniesEnabled: true
+      mutationEnabled: false
+      policyContent:
+        templateLibrary:
+          installation: ALL
+      monitoring:
+        backends:
+          - CLOUD_MONITORING
+          - PROMETHEUS
 `
