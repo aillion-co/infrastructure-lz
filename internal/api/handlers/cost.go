@@ -51,6 +51,7 @@ func (h *CostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, span := telemetry.Tracer().Start(r.Context(), "handlers.CostEstimate")
 	defer span.End()
 
+	limitBody(w, r)
 	var req models.ActivationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		span.RecordError(err)

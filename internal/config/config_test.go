@@ -47,3 +47,30 @@ func TestLoad_InvalidLogLevel(t *testing.T) {
 		t.Fatal("expected error for invalid log level")
 	}
 }
+
+func TestLoad_AuthRequiresAudiences(t *testing.T) {
+	t.Setenv("AUTH_ENABLED", "true")
+	_, err := config.Load()
+	if err == nil {
+		t.Fatal("expected error when AUTH_ENABLED without AUTH_ALLOWED_AUDIENCES")
+	}
+}
+
+func TestLoad_AuthEnabledWithAudiences(t *testing.T) {
+	t.Setenv("AUTH_ENABLED", "true")
+	t.Setenv("AUTH_ALLOWED_AUDIENCES", "client-a.apps.googleusercontent.com, client-b")
+	t.Setenv("AUTH_ALLOWED_DOMAINS", "example.com")
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !cfg.AuthEnabled {
+		t.Error("expected AuthEnabled true")
+	}
+	if len(cfg.AuthAllowedAudiences) != 2 {
+		t.Errorf("expected 2 audiences, got %d", len(cfg.AuthAllowedAudiences))
+	}
+	if len(cfg.AuthAllowedDomains) != 1 {
+		t.Errorf("expected 1 domain, got %d", len(cfg.AuthAllowedDomains))
+	}
+}

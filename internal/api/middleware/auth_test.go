@@ -83,3 +83,19 @@ func TestAuth_Enabled_MissingToken_Unauthorized(t *testing.T) {
 	handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/features", nil))
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
+
+func TestAudienceAllowed(t *testing.T) {
+	allowed := []string{"client-a", "client-b"}
+	if !audienceAllowed("client-a", allowed) {
+		t.Error("client-a should be allowed")
+	}
+	if audienceAllowed("client-c", allowed) {
+		t.Error("client-c should be rejected")
+	}
+	if audienceAllowed("", allowed) {
+		t.Error("empty audience should be rejected")
+	}
+	if audienceAllowed("client-a", nil) {
+		t.Error("no configured audiences should reject everything")
+	}
+}

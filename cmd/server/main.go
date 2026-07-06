@@ -55,7 +55,14 @@ func run() error {
 			}
 		}()
 	}
-	router := api.NewRouter(activationGen, pricer)
+	router := api.NewRouter(activationGen, pricer, api.RouterConfig{
+		AuthEnabled:      cfg.AuthEnabled,
+		AllowedDomains:   cfg.AuthAllowedDomains,
+		AllowedAudiences: cfg.AuthAllowedAudiences,
+	})
+	if !cfg.AuthEnabled {
+		slog.WarnContext(ctx, "authentication is DISABLED; all API endpoints are open (set AUTH_ENABLED=true)")
+	}
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,

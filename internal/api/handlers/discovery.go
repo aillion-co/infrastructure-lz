@@ -33,6 +33,7 @@ func HandleDiscoveryEvaluate() http.HandlerFunc {
 		ctx, span := telemetry.Tracer().Start(r.Context(), "handlers.DiscoveryEvaluate")
 		defer span.End()
 
+		limitBody(w, r)
 		var req models.DiscoveryResponse
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			span.RecordError(err)

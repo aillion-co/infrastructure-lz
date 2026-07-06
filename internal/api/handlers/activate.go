@@ -36,12 +36,13 @@ func (h *ActivateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	limitBody(w, r)
 	var req models.ActivationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "invalid request body")
 		slog.ErrorContext(ctx, "failed to decode activation request", "error", err)
-		http.Error(w, fmt.Sprintf("invalid request body: %s", err), http.StatusBadRequest)
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
