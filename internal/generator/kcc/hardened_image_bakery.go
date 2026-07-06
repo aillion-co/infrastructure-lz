@@ -1,9 +1,6 @@
 package kcc
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/aillion-co/infrastructure-lz/internal/models"
 )
 
@@ -66,28 +63,37 @@ func (b *hardenedImageBakeryBuilder) Build(config interface{}) ([]Resource, erro
 }
 
 func toHardenedImageConfig(config interface{}) (*models.HardenedImageBakeryConfig, error) {
-	cfg, ok := config.(*models.HardenedImageBakeryConfig)
-	if !ok {
-		data, err := json.Marshal(config)
-		if err != nil {
-			return nil, fmt.Errorf("marshalling hardened-image config: %w", err)
+	cfg, err := decodeConfig[models.HardenedImageBakeryConfig]("hardened-image-bakery", config)
+	if err != nil {
+		return nil, err
+	}
+	if err := requireName("hardened-image-bakery", "projectName", cfg.ProjectName); err != nil {
+		return nil, err
+	}
+	if err := requireName("hardened-image-bakery", "projectId", cfg.ProjectID); err != nil {
+		return nil, err
+	}
+	if err := requireName("hardened-image-bakery", "region", cfg.Region); err != nil {
+		return nil, err
+	}
+	if err := requireName("hardened-image-bakery", "zone", cfg.Zone); err != nil {
+		return nil, err
+	}
+	for field, val := range map[string]string{
+		"network":    cfg.Network,
+		"subnetwork": cfg.Subnetwork,
+		"buildSa":    cfg.BuildSA,
+		"logsBucket": cfg.LogsBucket,
+	} {
+		if err := validateOptionalName("hardened-image-bakery", field, val); err != nil {
+			return nil, err
 		}
-		cfg = &models.HardenedImageBakeryConfig{}
-		if err := json.Unmarshal(data, cfg); err != nil {
-			return nil, fmt.Errorf("unmarshalling hardened-image config: %w", err)
-		}
 	}
-	if cfg.ProjectName == "" {
-		return nil, newValidationError("hardened-image-bakery", "projectName", "is required")
+	if err := validateModel("hardened-image-bakery", "packerVersion", cfg.PackerVersion); err != nil {
+		return nil, err
 	}
-	if cfg.ProjectID == "" {
-		return nil, newValidationError("hardened-image-bakery", "projectId", "is required")
-	}
-	if cfg.Region == "" {
-		return nil, newValidationError("hardened-image-bakery", "region", "is required")
-	}
-	if cfg.Zone == "" {
-		return nil, newValidationError("hardened-image-bakery", "zone", "is required")
+	if err := validateModel("hardened-image-bakery", "ansibleVersion", cfg.AnsibleVersion); err != nil {
+		return nil, err
 	}
 	return cfg, nil
 }

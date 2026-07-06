@@ -13,7 +13,7 @@ spec:
   # hyphenated Kubernetes metadata.name cannot be used as the dataset ID.
   resourceID: customer_events
   friendlyName: analytics-proj Analytics Dataset
-  description: Customer event analytics dataset
+  description: "Customer event analytics dataset"
   location: us-central1
   defaultTableExpirationMs: 7776000000
   access:

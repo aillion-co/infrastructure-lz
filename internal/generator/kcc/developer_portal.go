@@ -1,9 +1,6 @@
 package kcc
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/aillion-co/infrastructure-lz/internal/models"
 )
 
@@ -70,26 +67,28 @@ func (b *developerPortalBuilder) Build(config interface{}) ([]Resource, error) {
 }
 
 func toDeveloperPortalConfig(config interface{}) (*models.DeveloperPortalConfig, error) {
-	cfg, ok := config.(*models.DeveloperPortalConfig)
-	if !ok {
-		data, err := json.Marshal(config)
-		if err != nil {
-			return nil, fmt.Errorf("marshalling developer-portal config: %w", err)
-		}
-		cfg = &models.DeveloperPortalConfig{}
-		if err := json.Unmarshal(data, cfg); err != nil {
-			return nil, fmt.Errorf("unmarshalling developer-portal config: %w", err)
-		}
+	cfg, err := decodeConfig[models.DeveloperPortalConfig]("dynamic-developer-portal", config)
+	if err != nil {
+		return nil, err
 	}
-	if cfg.ProjectName == "" {
-		return nil, newValidationError("dynamic-developer-portal", "projectName", "is required")
+	const feature = "dynamic-developer-portal"
+	if err := requireName(feature, "projectName", cfg.ProjectName); err != nil {
+		return nil, err
 	}
-	if cfg.GCPProjectID == "" {
-		return nil, newValidationError("dynamic-developer-portal", "gcpProjectId", "is required")
+	if err := requireName(feature, "gcpProjectId", cfg.GCPProjectID); err != nil {
+		return nil, err
 	}
-	if cfg.GCPRegion == "" {
-		return nil, newValidationError("dynamic-developer-portal", "gcpRegion", "is required")
+	if err := requireName(feature, "gcpRegion", cfg.GCPRegion); err != nil {
+		return nil, err
 	}
+	if err := validateOptionalName(feature, "gcpNetwork", cfg.GCPNetwork); err != nil {
+		return nil, err
+	}
+	if err := validateOptionalName(feature, "gcpSubnet", cfg.GCPSubnet); err != nil {
+		return nil, err
+	}
+	// GitRepoSSH is a URL (contains ':' '@' '/') and is YAML-quoted at
+	// render time; the control-character guard already blocks line breaks.
 	return cfg, nil
 }
 
@@ -255,7 +254,7 @@ metadata:
 spec:
   sourceFormat: unstructured
   git:
-    repo: {{ .GitRepoSSH }}
+    repo: {{ yamlStr .GitRepoSSH }}
     branch: main
     dir: /config
     auth: ssh

@@ -110,4 +110,7 @@ var templateFuncs = template.FuncMap{
 			}
 		}, s)
 	},
+	// yamlStr renders a value as a safe double-quoted YAML scalar. Use for
+	// free-text and URL fields that may contain YAML-structural characters.
+	"yamlStr": yamlScalar,
 }

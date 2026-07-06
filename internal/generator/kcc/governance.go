@@ -1,7 +1,6 @@
 package kcc
 
 import (
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -313,20 +312,13 @@ func (b *governanceBuilder) Build(config interface{}) ([]Resource, error) {
 }
 
 func toGovernanceConfig(config interface{}) (*models.GovernanceConfig, error) {
-	cfg, ok := config.(*models.GovernanceConfig)
-	if !ok {
-		data, err := json.Marshal(config)
-		if err != nil {
-			return nil, fmt.Errorf("marshalling governance config: %w", err)
-		}
-		cfg = &models.GovernanceConfig{}
-		if err := json.Unmarshal(data, cfg); err != nil {
-			return nil, fmt.Errorf("unmarshalling governance config: %w", err)
-		}
+	cfg, err := decodeConfig[models.GovernanceConfig]("governance-guardrails", config)
+	if err != nil {
+		return nil, err
 	}
 
-	if cfg.ProjectID == "" {
-		return nil, newValidationError("governance-guardrails", "projectId", "is required")
+	if err := requireName("governance-guardrails", "projectId", cfg.ProjectID); err != nil {
+		return nil, err
 	}
 	if len(cfg.Regimes) == 0 {
 		return nil, newValidationError("governance-guardrails", "regimes",
@@ -350,9 +342,17 @@ func toGovernanceConfig(config interface{}) (*models.GovernanceConfig, error) {
 
 	if cfg.AllowedRegions == "" {
 		cfg.AllowedRegions = "europe-west1,europe-west2,europe-west3,europe-west4,europe-north1"
+	} else if err := validateCSVNames("governance-guardrails", "allowedRegions", cfg.AllowedRegions); err != nil {
+		return nil, err
 	}
 	if cfg.RequiredLabels == "" {
 		cfg.RequiredLabels = "data-classification,owner"
+	} else {
+		for _, l := range splitCSVList(cfg.RequiredLabels) {
+			if err := validateModel("governance-guardrails", "requiredLabels", l); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	return cfg, nil

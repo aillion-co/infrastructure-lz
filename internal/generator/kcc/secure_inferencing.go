@@ -1,9 +1,6 @@
 package kcc
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/aillion-co/infrastructure-lz/internal/models"
 )
 
@@ -57,25 +54,21 @@ func (b *secureInferencingBuilder) Build(config interface{}) ([]Resource, error)
 }
 
 func toSecureInferencingConfig(config interface{}) (*models.SecureInferencingConfig, error) {
-	cfg, ok := config.(*models.SecureInferencingConfig)
-	if !ok {
-		data, err := json.Marshal(config)
-		if err != nil {
-			return nil, fmt.Errorf("marshalling secure-inferencing config: %w", err)
-		}
-		cfg = &models.SecureInferencingConfig{}
-		if err := json.Unmarshal(data, cfg); err != nil {
-			return nil, fmt.Errorf("unmarshalling secure-inferencing config: %w", err)
-		}
+	cfg, err := decodeConfig[models.SecureInferencingConfig]("secure-inferencing", config)
+	if err != nil {
+		return nil, err
 	}
-	if cfg.ProjectID == "" {
-		return nil, newValidationError("secure-inferencing", "projectId", "is required")
+	if err := requireName("secure-inferencing", "projectId", cfg.ProjectID); err != nil {
+		return nil, err
 	}
-	if cfg.ProjectName == "" {
-		return nil, newValidationError("secure-inferencing", "projectName", "is required")
+	if err := requireName("secure-inferencing", "projectName", cfg.ProjectName); err != nil {
+		return nil, err
 	}
-	if cfg.Region == "" {
-		return nil, newValidationError("secure-inferencing", "region", "is required")
+	if err := requireName("secure-inferencing", "region", cfg.Region); err != nil {
+		return nil, err
+	}
+	if err := validateModel("secure-inferencing", "geminiModel", cfg.GeminiModel); err != nil {
+		return nil, err
 	}
 	return cfg, nil
 }
@@ -188,7 +181,7 @@ spec:
   location: {{ .Region }}
   template:
     containers:
-      - image: {{ default "ghcr.io/berriai/litellm:main-latest" .LiteLLMImage }}
+      - image: {{ yamlStr (default "ghcr.io/berriai/litellm:main-latest" .LiteLLMImage) }}
         ports:
           - containerPort: 4000
         env:
@@ -207,8 +200,8 @@ spec:
 {{- end }}
         resources:
           limits:
-            cpu: {{ default "2" .CloudRunCPU }}
-            memory: {{ default "1Gi" .CloudRunMemory }}
+            cpu: {{ yamlStr (default "2" .CloudRunCPU) }}
+            memory: {{ yamlStr (default "1Gi" .CloudRunMemory) }}
         startupProbe:
           httpGet:
             path: /health

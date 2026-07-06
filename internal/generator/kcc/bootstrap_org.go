@@ -1,8 +1,6 @@
 package kcc
 
 import (
-	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/aillion-co/infrastructure-lz/internal/models"
@@ -94,38 +92,34 @@ func (b *bootstrapOrgBuilder) Build(config interface{}) ([]Resource, error) {
 }
 
 func toBootstrapOrgConfig(config interface{}) (*models.BootstrapOrgConfig, error) {
-	cfg, ok := config.(*models.BootstrapOrgConfig)
-	if !ok {
-		data, err := json.Marshal(config)
-		if err != nil {
-			return nil, fmt.Errorf("marshalling bootstrap-org config: %w", err)
-		}
-		cfg = &models.BootstrapOrgConfig{}
-		if err := json.Unmarshal(data, cfg); err != nil {
-			return nil, fmt.Errorf("unmarshalling bootstrap-org config: %w", err)
-		}
+	cfg, err := decodeConfig[models.BootstrapOrgConfig]("bootstrap-org", config)
+	if err != nil {
+		return nil, err
 	}
 	cfg.Envs = strings.TrimSpace(cfg.Envs)
-	if cfg.CustomerName == "" {
-		return nil, newValidationError("bootstrap-org", "customerName", "is required")
+	if err := requireName("bootstrap-org", "customerName", cfg.CustomerName); err != nil {
+		return nil, err
 	}
-	if cfg.WorkloadName == "" {
-		return nil, newValidationError("bootstrap-org", "workloadName", "is required")
+	if err := requireName("bootstrap-org", "workloadName", cfg.WorkloadName); err != nil {
+		return nil, err
 	}
 	if cfg.RootLevel != "organization" && cfg.RootLevel != "folder" {
 		return nil, newValidationError("bootstrap-org", "rootLevel", "must be \"organization\" or \"folder\"")
 	}
-	if cfg.RootID == "" {
-		return nil, newValidationError("bootstrap-org", "rootId", "is required")
+	if err := requireDigits("bootstrap-org", "rootId", cfg.RootID); err != nil {
+		return nil, err
 	}
-	if cfg.BillingAccount == "" {
-		return nil, newValidationError("bootstrap-org", "billingAccount", "is required")
+	if err := requireToken("bootstrap-org", "billingAccount", cfg.BillingAccount); err != nil {
+		return nil, err
 	}
-	if cfg.Region == "" {
-		return nil, newValidationError("bootstrap-org", "region", "is required")
+	if err := requireName("bootstrap-org", "region", cfg.Region); err != nil {
+		return nil, err
 	}
 	if cfg.Envs == "" {
 		return nil, newValidationError("bootstrap-org", "envs", "is required (provide a comma-separated list of environment names, e.g. \"dev,test,prod\")")
+	}
+	if err := validateCSVNames("bootstrap-org", "envs", cfg.Envs); err != nil {
+		return nil, err
 	}
 	if cfg.OrgPolicies && cfg.RootLevel != "organization" {
 		return nil, newValidationError("bootstrap-org", "orgPolicies", "requires rootLevel \"organization\"")

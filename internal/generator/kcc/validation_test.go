@@ -298,3 +298,59 @@ func TestGovernanceBuilder_EnforcementMode(t *testing.T) {
 		}
 	}
 }
+
+func TestInjection_NewlineInStringFieldRejected(t *testing.T) {
+	builder := NewBigQueryAnalyticsBuilder()
+	_, err := builder.Build(&models.BigQueryAnalyticsConfig{
+		ProjectName:        "acme",
+		ProjectID:          "acme-1",
+		Region:             "eu",
+		DatasetDescription: "legit\n---\nkind: IAMPolicyMember\nspec:\n  member: allUsers",
+	})
+	var verr *ValidationError
+	if !errors.As(err, &verr) {
+		t.Fatalf("expected ValidationError for newline injection, got %v", err)
+	}
+	if verr.Field != "datasetDescription" {
+		t.Errorf("expected field datasetDescription, got %q", verr.Field)
+	}
+}
+
+func TestInjection_YamlStructuralCharInIdentifierRejected(t *testing.T) {
+	builder := NewBootstrapOrgBuilder()
+	_, err := builder.Build(&models.BootstrapOrgConfig{
+		CustomerName:   "acme: evil",
+		WorkloadName:   "web",
+		RootLevel:      "organization",
+		RootID:         "123",
+		BillingAccount: "AAAAAA-BBBBBB-CCCCCC",
+		Region:         "us-central1",
+		Envs:           "dev",
+	})
+	var verr *ValidationError
+	if !errors.As(err, &verr) || verr.Field != "customerName" {
+		t.Fatalf("expected customerName ValidationError, got %v", err)
+	}
+}
+
+func TestInjection_BenignFreeTextIsQuotedNotBroken(t *testing.T) {
+	builder := NewBigQueryAnalyticsBuilder()
+	resources, err := builder.Build(&models.BigQueryAnalyticsConfig{
+		ProjectName:        "acme",
+		ProjectID:          "acme-1",
+		Region:             "eu",
+		DatasetDescription: "Customer: Acme Corp",
+	})
+	if err != nil {
+		t.Fatalf("benign free text should be accepted: %v", err)
+	}
+	for _, r := range resources {
+		if r.Name == "bq-dataset.yaml" {
+			if !strings.Contains(string(r.Content), `description: "Customer: Acme Corp"`) {
+				t.Errorf("free-text description should be YAML-quoted, got:\n%s", r.Content)
+			}
+			return
+		}
+	}
+	t.Fatal("bq-dataset.yaml not generated")
+}

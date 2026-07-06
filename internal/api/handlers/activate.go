@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"regexp"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -89,11 +90,18 @@ func (h *ActivateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// customerNamePattern constrains the customer name to a safe slug. It feeds
+// both YAML scalars and zip entry paths in the generated chart, so it must
+// contain no path separators, whitespace, or YAML-structural characters.
+var customerNamePattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{1,29}[a-z0-9])?$`)
+
 func validateActivationRequest(req *models.ActivationRequest) []string {
 	var errs []string
 
 	if req.Customer.CustomerName == "" {
 		errs = append(errs, "customer name is required")
+	} else if !customerNamePattern.MatchString(req.Customer.CustomerName) {
+		errs = append(errs, "customer name must be 2-31 characters of lowercase letters, digits, and hyphens")
 	}
 	if req.Customer.ContactEmail == "" {
 		errs = append(errs, "contact email is required")
