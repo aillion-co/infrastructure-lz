@@ -88,7 +88,7 @@ func FeatureRegistry() []FeatureMetadata {
 		{
 			ID:          FeatureDeveloperPortal,
 			Name:        "Dynamic Developer Portal",
-			Description: "Backstage developer portal with Config Controller on GKE for GitOps-driven infrastructure management",
+			Description: "Backstage developer portal with Config Controller on GKE, shipping golden GCP architecture patterns aligned with the governance regimes out of the box",
 			Category:    "developer-experience",
 			Icon:        "layout-dashboard",
 			Version:     "1.0.0",

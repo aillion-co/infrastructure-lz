@@ -53,6 +53,10 @@ func (b *developerPortalBuilder) Build(config interface{}) ([]Resource, error) {
 	}
 	resources = append(resources, Resource{Name: "backstage-workloads.yaml", Content: res})
 
+	// Golden architecture pattern catalog, aligned with the governance
+	// regimes, shipped in the portal out of the box.
+	resources = append(resources, Resource{Name: "golden-patterns.yaml", Content: renderGoldenPatterns(cfg)})
+
 	// Config Sync
 	if cfg.GitRepoSSH != "" {
 		res, err = renderTemplate("config-sync.yaml", portalConfigSync, cfg)

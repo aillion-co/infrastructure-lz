@@ -183,6 +183,8 @@ func TestActivate_AllFeatures(t *testing.T) {
 	assertZipContains(t, zipData, "RunService")
 	assertZipContains(t, zipData, "ConstraintTemplate")
 	assertZipContains(t, zipData, "GKEHubFeature")
+	assertZipContains(t, zipData, "scaffolder.backstage.io/v1beta3")
+	assertZipContains(t, zipData, "backstage-golden-patterns")
 }
 
 // TestActivate_FeatureValidationError exercises the ValidationError -> HTTP 400

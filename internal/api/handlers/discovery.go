@@ -108,18 +108,17 @@ func evaluateDiscovery(resp *models.DiscoveryResponse) []FeatureRecommendation {
 	}
 	recs = append(recs, bqRec)
 
-	// developer-portal: GitOps tooling (VCS + build pipeline) suggests a
-	// Backstage portal for self-service infrastructure management.
+	// developer-portal: always recommended — the Backstage portal ships the
+	// golden architecture pattern catalog with every landing zone.
 	dpRec := FeatureRecommendation{
 		FeatureID:   models.FeatureDeveloperPortal,
-		Recommended: false,
-		Confidence:  "low",
-		Reason:      "No developer portal requirements detected",
+		Recommended: true,
+		Confidence:  "medium",
+		Reason:      "The Backstage portal ships golden architecture patterns aligned with your governance regimes",
 	}
 	if resp.IACCICD.VCS != "" && resp.IACCICD.BuildPipeline != "" {
-		dpRec.Recommended = true
-		dpRec.Confidence = "medium"
-		dpRec.Reason = "VCS and build pipeline tooling indicate GitOps workflows that benefit from a developer portal"
+		dpRec.Confidence = "high"
+		dpRec.Reason = "VCS and build pipeline tooling indicate GitOps workflows; the portal adds golden patterns and self-service scaffolding"
 	}
 	recs = append(recs, dpRec)
 
