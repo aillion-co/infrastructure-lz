@@ -54,4 +54,4 @@ spec:
   match:
     kinds:
       - apiGroups: ["*"]
-        kinds: ["IAMPolicy", "IAMPolicyMember"]
+        kinds: ["IAMPolicy", "IAMPolicyMember", "IAMPartialPolicy"]

@@ -45,7 +45,7 @@ var governanceCatalog = []governancePolicy{
 		Kind:        "GcpNoPublicIam",
 		Description: "Deny IAM bindings that grant access to allUsers or allAuthenticatedUsers",
 		Regimes:     []string{"cis", "gdpr", "iso27001", "nis2", "pci-dss"},
-		TargetKinds: []string{"IAMPolicy", "IAMPolicyMember"},
+		TargetKinds: []string{"IAMPolicy", "IAMPolicyMember", "IAMPartialPolicy"},
 		Rego: `package gcpnopubliciam
 
 violation[{"msg": msg}] {
@@ -165,10 +165,12 @@ violation[{"msg": msg}] {
 		TargetKinds: []string{"SQLInstance"},
 		Rego: `package gcpsqlnopublicip
 
+# Cloud SQL enables a public IPv4 address by default, so a violation must
+# fire unless ipv4Enabled is explicitly set to false.
 violation[{"msg": msg}] {
   input.review.object.kind == "SQLInstance"
-  input.review.object.spec.settings.ipConfiguration.ipv4Enabled == true
-  msg := "SQLInstance must not enable a public IPv4 address"
+  not input.review.object.spec.settings.ipConfiguration.ipv4Enabled == false
+  msg := "SQLInstance must explicitly disable public IPv4 (spec.settings.ipConfiguration.ipv4Enabled: false)"
 }`,
 	},
 	{
@@ -226,10 +228,13 @@ binary_authorization_enabled {
 		TargetKinds: []string{"ComputeFirewall"},
 		Rego: `package gcpfirewallnoopeningress
 
+# Only allow-rules are a risk; a deny-rule sourced from 0.0.0.0/0 is a
+# legitimate control and must not be flagged.
 violation[{"msg": msg}] {
   obj := input.review.object
   obj.kind == "ComputeFirewall"
   not obj.spec.direction == "EGRESS"
+  obj.spec.allow
   obj.spec.sourceRanges[_] == "0.0.0.0/0"
   msg := "ComputeFirewall must not allow ingress from 0.0.0.0/0"
 }`,

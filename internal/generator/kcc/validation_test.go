@@ -382,3 +382,25 @@ func TestGovernanceBuilder_InstallsPolicyController(t *testing.T) {
 	}
 	t.Fatal("policycontroller.yaml not generated")
 }
+
+func TestGovernance_SqlAndFirewallRegoSemantics(t *testing.T) {
+	resources, err := NewGovernanceBuilder().Build(&models.GovernanceConfig{
+		ProjectID: "mgmt-proj",
+		Regimes:   []string{"cis"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	got := map[string]string{}
+	for _, r := range resources {
+		got[r.Name] = string(r.Content)
+	}
+	// sql-no-public-ip must catch the omitted-field default (public IP).
+	if !strings.Contains(got["policy-sql-no-public-ip.yaml"], "ipv4Enabled == false") {
+		t.Error("sql-no-public-ip should require ipv4Enabled explicitly false")
+	}
+	// firewall rule must only flag allow-rules, not deny-rules.
+	if !strings.Contains(got["policy-firewall-no-open-ingress.yaml"], "obj.spec.allow") {
+		t.Error("firewall-no-open-ingress should scope to allow-rules")
+	}
+}

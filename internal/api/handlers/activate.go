@@ -108,11 +108,21 @@ func validateActivationRequest(req *models.ActivationRequest) []string {
 		errs = append(errs, "contact email is required")
 	}
 
+	known := make(map[models.FeatureID]bool)
+	for _, id := range models.AllFeatureIDs() {
+		known[id] = true
+	}
+
 	enabled := make(map[models.FeatureID]bool, len(req.Features))
 	for _, f := range req.Features {
-		if f.Enabled {
-			enabled[f.FeatureID] = true
+		if !f.Enabled {
+			continue
 		}
+		if !known[f.FeatureID] {
+			errs = append(errs, fmt.Sprintf("unknown feature %q", f.FeatureID))
+			continue
+		}
+		enabled[f.FeatureID] = true
 	}
 	if len(enabled) == 0 {
 		errs = append(errs, "at least one feature must be enabled")

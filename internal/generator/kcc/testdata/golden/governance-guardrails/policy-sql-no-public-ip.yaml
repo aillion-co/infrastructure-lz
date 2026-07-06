@@ -21,10 +21,12 @@ spec:
       rego: |
         package gcpsqlnopublicip
 
+        # Cloud SQL enables a public IPv4 address by default, so a violation must
+        # fire unless ipv4Enabled is explicitly set to false.
         violation[{"msg": msg}] {
           input.review.object.kind == "SQLInstance"
-          input.review.object.spec.settings.ipConfiguration.ipv4Enabled == true
-          msg := "SQLInstance must not enable a public IPv4 address"
+          not input.review.object.spec.settings.ipConfiguration.ipv4Enabled == false
+          msg := "SQLInstance must explicitly disable public IPv4 (spec.settings.ipConfiguration.ipv4Enabled: false)"
         }
 ---
 apiVersion: constraints.gatekeeper.sh/v1beta1

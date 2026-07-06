@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -51,6 +52,8 @@ func (g *ActivationGenerator) GenerateActivation(ctx context.Context, req *model
 
 	metrics := telemetry.GetMetrics()
 	metrics.GenerateTotal.Add(ctx, 1)
+	start := time.Now()
+	defer func() { metrics.GenerateDuration.Record(ctx, time.Since(start).Seconds()) }()
 
 	slog.InfoContext(ctx, "generating activation",
 		"customer", req.Customer.CustomerName,

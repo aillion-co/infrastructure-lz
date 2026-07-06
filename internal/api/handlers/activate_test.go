@@ -79,3 +79,25 @@ func TestValidateActivationRequest_DependencySatisfied_NoErrors(t *testing.T) {
 
 	assert.Empty(t, validateActivationRequest(req))
 }
+
+func TestValidateActivationRequest_UnknownFeature_Errors(t *testing.T) {
+	req := &models.ActivationRequest{
+		Customer: models.CustomerDetails{
+			CustomerName: "acme",
+			ContactEmail: "ops@acme.example",
+		},
+		Features: []models.FeatureSelection{
+			{FeatureID: "not-a-real-feature", Enabled: true},
+		},
+	}
+	errs := validateActivationRequest(req)
+	found := false
+	for _, e := range errs {
+		if e == `unknown feature "not-a-real-feature"` {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected unknown-feature error, got %v", errs)
+	}
+}

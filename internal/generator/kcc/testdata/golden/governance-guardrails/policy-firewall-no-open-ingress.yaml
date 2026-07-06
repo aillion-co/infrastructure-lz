@@ -21,10 +21,13 @@ spec:
       rego: |
         package gcpfirewallnoopeningress
 
+        # Only allow-rules are a risk; a deny-rule sourced from 0.0.0.0/0 is a
+        # legitimate control and must not be flagged.
         violation[{"msg": msg}] {
           obj := input.review.object
           obj.kind == "ComputeFirewall"
           not obj.spec.direction == "EGRESS"
+          obj.spec.allow
           obj.spec.sourceRanges[_] == "0.0.0.0/0"
           msg := "ComputeFirewall must not allow ingress from 0.0.0.0/0"
         }
