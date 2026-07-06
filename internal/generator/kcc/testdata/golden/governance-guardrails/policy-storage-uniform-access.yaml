@@ -1,0 +1,45 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: gcpstorageuniformaccess
+  labels:
+    managed-by: activations-accelerator
+    feature: governance-guardrails
+  annotations:
+    description: "Require uniform bucket-level access on Cloud Storage buckets"
+spec:
+  crd:
+    spec:
+      names:
+        kind: GcpStorageUniformAccess
+      validation:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package gcpstorageuniformaccess
+
+        violation[{"msg": msg}] {
+          input.review.object.kind == "StorageBucket"
+          not input.review.object.spec.uniformBucketLevelAccess == true
+          msg := "StorageBucket must set spec.uniformBucketLevelAccess: true"
+        }
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: GcpStorageUniformAccess
+metadata:
+  name: storage-uniform-access
+  labels:
+    managed-by: activations-accelerator
+    feature: governance-guardrails
+  annotations:
+    compliance.aillion.co/regimes: "cis,iso27001"
+    description: "Require uniform bucket-level access on Cloud Storage buckets"
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["*"]
+        kinds: ["StorageBucket"]

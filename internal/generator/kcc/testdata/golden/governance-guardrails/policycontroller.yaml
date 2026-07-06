@@ -1,0 +1,33 @@
+apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: Service
+metadata:
+  name: acme-mgmt-gkehub
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-mgmt
+spec:
+  resourceID: gkehub.googleapis.com
+---
+apiVersion: serviceusage.cnrm.cloud.google.com/v1beta1
+kind: Service
+metadata:
+  name: acme-mgmt-anthospolicycontroller
+  namespace: config-connector
+  annotations:
+    cnrm.cloud.google.com/project-id: acme-mgmt
+spec:
+  resourceID: anthospolicycontroller.googleapis.com
+---
+apiVersion: gkehub.cnrm.cloud.google.com/v1beta1
+kind: GKEHubFeature
+metadata:
+  name: policycontroller
+  namespace: config-connector
+  labels:
+    managed-by: activations-accelerator
+    feature: governance-guardrails
+spec:
+  projectRef:
+    external: projects/acme-mgmt
+  location: global
+  resourceID: policycontroller

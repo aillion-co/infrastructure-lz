@@ -53,6 +53,24 @@
       }
     },
     {
+      "featureId": "governance-guardrails",
+      "enabled": true,
+      "config": {
+        "projectId": "acme-mgmt-001",
+        "regimes": [
+          "cis",
+          "gdpr",
+          "pci-dss",
+          "iso27001",
+          "nis2",
+          "eucra"
+        ],
+        "enforcementMode": "deny",
+        "allowedRegions": "europe-west1,europe-west2,europe-west3,europe-west4,europe-north1",
+        "requiredLabels": "data-classification,owner"
+      }
+    },
+    {
       "featureId": "hardened-image-bakery",
       "enabled": true,
       "config": {

@@ -418,6 +418,29 @@
                     <label>GCP Region <input type="text" data-feature="dynamic-developer-portal" data-field="gcpRegion" class="cfg" value="europe-west2"></label>
                     <label>Git Repo SSH URL <input type="text" data-feature="dynamic-developer-portal" data-field="gitRepoSshUrl" class="cfg" placeholder="git@github.com:org/config.git"></label>
                 </div>`,
+            'governance-guardrails': `
+                <div class="grid">
+                    <label>Project ID <input type="text" data-feature="governance-guardrails" data-field="projectId" class="cfg" placeholder="mgmt-project-id"></label>
+                    <label>Enforcement Mode
+                        <select data-feature="governance-guardrails" data-field="enforcementMode" class="cfg">
+                            <option value="deny">Deny (enforce)</option>
+                            <option value="dryrun">Dry run (audit only)</option>
+                        </select>
+                    </label>
+                </div>
+                <fieldset>
+                    <legend><strong>Compliance Regimes</strong> <span class="text-sm opacity-70">select every regime you must comply with</span></legend>
+                    <label><input type="checkbox" data-feature="governance-guardrails" data-field="regimes" data-multi="1" value="cis" class="cfg" checked> CIS Google Cloud Foundations</label>
+                    <label><input type="checkbox" data-feature="governance-guardrails" data-field="regimes" data-multi="1" value="gdpr" class="cfg"> GDPR</label>
+                    <label><input type="checkbox" data-feature="governance-guardrails" data-field="regimes" data-multi="1" value="pci-dss" class="cfg"> PCI DSS</label>
+                    <label><input type="checkbox" data-feature="governance-guardrails" data-field="regimes" data-multi="1" value="iso27001" class="cfg"> ISO/IEC 27001</label>
+                    <label><input type="checkbox" data-feature="governance-guardrails" data-field="regimes" data-multi="1" value="nis2" class="cfg"> NIS2</label>
+                    <label><input type="checkbox" data-feature="governance-guardrails" data-field="regimes" data-multi="1" value="eucra" class="cfg"> EU Cyber Resilience Act</label>
+                </fieldset>
+                <div class="grid">
+                    <label>Allowed Regions <input type="text" data-feature="governance-guardrails" data-field="allowedRegions" class="cfg" value="europe-west1,europe-west2,europe-west3,europe-west4,europe-north1"></label>
+                    <label>Required Labels <input type="text" data-feature="governance-guardrails" data-field="requiredLabels" class="cfg" value="data-classification,owner"></label>
+                </div>`,
             'hardened-image-bakery': `
                 <div class="grid">
                     <label>Project Name <input type="text" data-feature="hardened-image-bakery" data-field="projectName" class="cfg"></label>
@@ -561,7 +584,10 @@
             const cfg = {};
             document.querySelectorAll(`.cfg[data-feature="${fid}"]`).forEach(el => {
                 const field = el.dataset.field;
-                if (el.type === 'checkbox') {
+                if (el.type === 'checkbox' && el.dataset.multi) {
+                    cfg[field] = cfg[field] || [];
+                    if (el.checked) cfg[field].push(el.value);
+                } else if (el.type === 'checkbox') {
                     cfg[field] = el.checked;
                 } else {
                     cfg[field] = el.value;

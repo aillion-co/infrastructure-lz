@@ -183,3 +183,20 @@ func TestGolden_SkaffoldAppDev(t *testing.T) {
 
 	goldenTest(t, "skaffold-application-development", resources)
 }
+
+func TestGolden_GovernanceGuardrails(t *testing.T) {
+	builder := NewGovernanceBuilder()
+	cfg := &models.GovernanceConfig{
+		ProjectID:       "acme-mgmt",
+		Regimes:         []string{"cis", "gdpr", "pci-dss", "iso27001", "nis2", "eucra"},
+		EnforcementMode: "deny",
+		AllowedRegions:  "europe-west1,europe-west2",
+		RequiredLabels:  "data-classification,owner",
+	}
+
+	resources, err := builder.Build(cfg)
+	require.NoError(t, err)
+	require.NotEmpty(t, resources)
+
+	goldenTest(t, "governance-guardrails", resources)
+}

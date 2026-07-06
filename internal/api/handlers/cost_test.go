@@ -27,6 +27,7 @@ func TestCostEstimateHandler_AllFeatures(t *testing.T) {
 			{FeatureID: models.FeatureHardenedImageBakery, Enabled: true},
 			{FeatureID: models.FeatureSecureInferencing, Enabled: true},
 			{FeatureID: models.FeatureSkaffoldAppDev, Enabled: true},
+			{FeatureID: models.FeatureGovernance, Enabled: true},
 		},
 	}
 
@@ -43,7 +44,7 @@ func TestCostEstimateHandler_AllFeatures(t *testing.T) {
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 
 	assert.Equal(t, "USD", resp.Currency)
-	assert.Len(t, resp.Features, 6)
+	assert.Len(t, resp.Features, 7)
 	assert.Greater(t, resp.TotalMonthly, 0.0)
 	assert.NotEmpty(t, resp.Disclaimer)
 

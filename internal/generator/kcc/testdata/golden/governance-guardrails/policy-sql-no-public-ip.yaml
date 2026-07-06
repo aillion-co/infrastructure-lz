@@ -1,0 +1,45 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: gcpsqlnopublicip
+  labels:
+    managed-by: activations-accelerator
+    feature: governance-guardrails
+  annotations:
+    description: "Deny Cloud SQL instances with public IPv4 connectivity"
+spec:
+  crd:
+    spec:
+      names:
+        kind: GcpSqlNoPublicIp
+      validation:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package gcpsqlnopublicip
+
+        violation[{"msg": msg}] {
+          input.review.object.kind == "SQLInstance"
+          input.review.object.spec.settings.ipConfiguration.ipv4Enabled == true
+          msg := "SQLInstance must not enable a public IPv4 address"
+        }
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: GcpSqlNoPublicIp
+metadata:
+  name: sql-no-public-ip
+  labels:
+    managed-by: activations-accelerator
+    feature: governance-guardrails
+  annotations:
+    compliance.aillion.co/regimes: "cis,iso27001,pci-dss"
+    description: "Deny Cloud SQL instances with public IPv4 connectivity"
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["*"]
+        kinds: ["SQLInstance"]

@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: governance-regime-manifest
+  namespace: config-connector
+  labels:
+    managed-by: activations-accelerator
+    feature: governance-guardrails
+data:
+  enforcementMode: deny
+  regimes: |
+    cis: CIS Google Cloud Foundations Benchmark
+    eucra: EU Cyber Resilience Act
+    gdpr: GDPR
+    iso27001: ISO/IEC 27001
+    nis2: NIS2
+    pci-dss: PCI DSS
+  policies: |
+    no-public-iam: covers cis, gdpr, iso27001, nis2, pci-dss
+    storage-uniform-access: covers cis, iso27001
+    require-cmek: covers gdpr, iso27001, nis2, pci-dss
+    allowed-regions: covers gdpr, nis2
+    required-labels: covers gdpr, iso27001, nis2
+    sql-no-public-ip: covers cis, iso27001, pci-dss
+    gke-private-cluster: covers cis, nis2, pci-dss
+    gke-workload-identity: covers cis, iso27001
+    binary-authorization: covers eucra, nis2
+    firewall-no-open-ingress: covers cis, nis2, pci-dss
+    shielded-vms: covers cis, eucra
+    bucket-versioning: covers eucra, iso27001, nis2

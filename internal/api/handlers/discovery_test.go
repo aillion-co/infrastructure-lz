@@ -25,7 +25,7 @@ func TestHandleDiscoveryEvaluate_BootstrapOrgAlwaysRecommended(t *testing.T) {
 	var resp DiscoveryEvaluationResponse
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 
-	assert.Len(t, resp.Recommendations, 6)
+	assert.Len(t, resp.Recommendations, 7)
 	// bootstrap-org should always be recommended
 	for _, r := range resp.Recommendations {
 		if r.FeatureID == models.FeatureBootstrapOrg {

@@ -1,0 +1,57 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: gcpnopubliciam
+  labels:
+    managed-by: activations-accelerator
+    feature: governance-guardrails
+  annotations:
+    description: "Deny IAM bindings that grant access to allUsers or allAuthenticatedUsers"
+spec:
+  crd:
+    spec:
+      names:
+        kind: GcpNoPublicIam
+      validation:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package gcpnopubliciam
+
+        violation[{"msg": msg}] {
+          member := public_members[_]
+          msg := sprintf("public IAM member %v is not permitted", [member])
+        }
+
+        public_members[member] {
+          member := input.review.object.spec.member
+          is_public(member)
+        }
+
+        public_members[member] {
+          member := input.review.object.spec.bindings[_].members[_]
+          is_public(member)
+        }
+
+        is_public(member) { member == "allUsers" }
+        is_public(member) { member == "allAuthenticatedUsers" }
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: GcpNoPublicIam
+metadata:
+  name: no-public-iam
+  labels:
+    managed-by: activations-accelerator
+    feature: governance-guardrails
+  annotations:
+    compliance.aillion.co/regimes: "cis,gdpr,iso27001,nis2,pci-dss"
+    description: "Deny IAM bindings that grant access to allUsers or allAuthenticatedUsers"
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["*"]
+        kinds: ["IAMPolicy", "IAMPolicyMember"]

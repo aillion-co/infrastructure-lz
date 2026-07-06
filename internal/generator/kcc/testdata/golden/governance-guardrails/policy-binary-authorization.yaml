@@ -1,0 +1,50 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: gcpbinaryauthorization
+  labels:
+    managed-by: activations-accelerator
+    feature: governance-guardrails
+  annotations:
+    description: "Require Binary Authorization on GKE clusters (secure software supply chain)"
+spec:
+  crd:
+    spec:
+      names:
+        kind: GcpBinaryAuthorization
+      validation:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package gcpbinaryauthorization
+
+        violation[{"msg": msg}] {
+          input.review.object.kind == "ContainerCluster"
+          not binary_authorization_enabled
+          msg := "ContainerCluster must enable Binary Authorization (spec.binaryAuthorization)"
+        }
+
+        binary_authorization_enabled {
+          mode := input.review.object.spec.binaryAuthorization.evaluationMode
+          mode != "DISABLED"
+        }
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: GcpBinaryAuthorization
+metadata:
+  name: binary-authorization
+  labels:
+    managed-by: activations-accelerator
+    feature: governance-guardrails
+  annotations:
+    compliance.aillion.co/regimes: "eucra,nis2"
+    description: "Require Binary Authorization on GKE clusters (secure software supply chain)"
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["*"]
+        kinds: ["ContainerCluster"]

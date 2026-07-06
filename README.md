@@ -23,6 +23,7 @@ A Go web application that generates Infrastructure-as-Code configurations for Go
 | **Bootstrap Organisation** | GCP org structure, management project, CI/CD, folder hierarchy, org policies, workload environments |
 | **BigQuery Analytics** | BigQuery datasets with CRM or Google Analytics integrations |
 | **Dynamic Developer Portal** | Backstage portal with Config Controller for GitOps-driven infrastructure |
+| **Governance Guardrails** | OPA Gatekeeper policies via GKE Policy Controller with selectable compliance regimes (CIS, GDPR, PCI DSS, ISO 27001, NIS2, EU CRA) |
 | **Hardened Image Bakery** | CIS-compliant hardened VM images using Packer/Ansible + Cloud Build |
 | **Secure Inferencing** | LiteLLM AI proxy for standardised LLM access with audit logging |
 | **Skaffold Application Development** | Kubernetes application scaffold with Skaffold, CIS security, multi-env overlays |

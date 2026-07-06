@@ -25,6 +25,7 @@ const (
 	FeatureBootstrapOrg        FeatureID = "bootstrap-org"
 	FeatureBigQueryAnalytics   FeatureID = "bigquery-analytics"
 	FeatureDeveloperPortal     FeatureID = "dynamic-developer-portal"
+	FeatureGovernance          FeatureID = "governance-guardrails"
 	FeatureHardenedImageBakery FeatureID = "hardened-image-bakery"
 	FeatureSecureInferencing   FeatureID = "secure-inferencing"
 	FeatureSkaffoldAppDev      FeatureID = "skaffold-application-development"
@@ -36,6 +37,7 @@ func AllFeatureIDs() []FeatureID {
 		FeatureBootstrapOrg,
 		FeatureBigQueryAnalytics,
 		FeatureDeveloperPortal,
+		FeatureGovernance,
 		FeatureHardenedImageBakery,
 		FeatureSecureInferencing,
 		FeatureSkaffoldAppDev,
@@ -89,6 +91,16 @@ func FeatureRegistry() []FeatureMetadata {
 			Description: "Backstage developer portal with Config Controller on GKE for GitOps-driven infrastructure management",
 			Category:    "developer-experience",
 			Icon:        "layout-dashboard",
+			Version:     "1.0.0",
+			Maturity:    "beta",
+			DependsOn:   []FeatureID{FeatureBootstrapOrg},
+		},
+		{
+			ID:          FeatureGovernance,
+			Name:        "Governance Guardrails",
+			Description: "OPA Gatekeeper guardrails via GKE Policy Controller with selectable compliance regimes: CIS, GDPR, PCI DSS, ISO 27001, NIS2, and EU CRA",
+			Category:    "security",
+			Icon:        "scale",
 			Version:     "1.0.0",
 			Maturity:    "beta",
 			DependsOn:   []FeatureID{FeatureBootstrapOrg},

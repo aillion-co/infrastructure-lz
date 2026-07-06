@@ -1,0 +1,63 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: gcpallowedregions
+  labels:
+    managed-by: activations-accelerator
+    feature: governance-guardrails
+  annotations:
+    description: "Restrict resource locations to an approved region list (data residency)"
+spec:
+  crd:
+    spec:
+      names:
+        kind: GcpAllowedRegions
+      validation:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package gcpallowedregions
+
+        violation[{"msg": msg}] {
+          location := object_location
+          not location_allowed(location)
+          msg := sprintf("location %v is not in the approved region list %v", [location, input.parameters.regions])
+        }
+
+        object_location = location {
+          location := input.review.object.spec.location
+        } else = location {
+          location := input.review.object.spec.region
+        }
+
+        location_allowed(location) {
+          lower(location) == lower(input.parameters.regions[_])
+        }
+
+        location_allowed(location) {
+          lower(location) == "global"
+        }
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: GcpAllowedRegions
+metadata:
+  name: allowed-regions
+  labels:
+    managed-by: activations-accelerator
+    feature: governance-guardrails
+  annotations:
+    compliance.aillion.co/regimes: "gdpr,nis2"
+    description: "Restrict resource locations to an approved region list (data residency)"
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["*"]
+        kinds: ["*"]
+  parameters:
+    regions:
+      - europe-west1
+      - europe-west2

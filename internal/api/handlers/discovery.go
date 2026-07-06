@@ -123,6 +123,24 @@ func evaluateDiscovery(resp *models.DiscoveryResponse) []FeatureRecommendation {
 	}
 	recs = append(recs, dpRec)
 
+	// governance-guardrails: always recommended; confidence rises when the
+	// questionnaire signals an explicit compliance posture.
+	govRec := FeatureRecommendation{
+		FeatureID:   models.FeatureGovernance,
+		Recommended: true,
+		Confidence:  "medium",
+		Reason:      "Policy guardrails are recommended for every landing zone",
+	}
+	regulatedIndustry := resp.CustomerInfo.IndustryVertical == "financial-services" ||
+		resp.CustomerInfo.IndustryVertical == "public-sector" ||
+		resp.CustomerInfo.IndustryVertical == "healthcare"
+	hasResidency := resp.Security.RegionalRestrictions != "" && resp.Security.RegionalRestrictions != "none"
+	if resp.Security.CMEK || hasResidency || regulatedIndustry {
+		govRec.Confidence = "high"
+		govRec.Reason = "Security and industry answers indicate compliance requirements (CMEK, data residency, or a regulated vertical)"
+	}
+	recs = append(recs, govRec)
+
 	// hardened-image-bakery: if Security mentions hardened images
 	hiRec := FeatureRecommendation{
 		FeatureID:   models.FeatureHardenedImageBakery,

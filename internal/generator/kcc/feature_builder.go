@@ -28,6 +28,7 @@ func NewFeatureBuilderRegistry() *FeatureBuilderRegistry {
 	r.Register(NewBootstrapOrgBuilder())
 	r.Register(NewBigQueryAnalyticsBuilder())
 	r.Register(NewDeveloperPortalBuilder())
+	r.Register(NewGovernanceBuilder())
 	r.Register(NewHardenedImageBakeryBuilder())
 	r.Register(NewSecureInferencingBuilder())
 	r.Register(NewSkaffoldAppDevBuilder())
