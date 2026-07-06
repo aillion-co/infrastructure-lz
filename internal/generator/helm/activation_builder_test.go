@@ -104,3 +104,37 @@ func TestBuildActivation_ZipPathsHaveNoTraversal(t *testing.T) {
 		}
 	}
 }
+
+func TestEscapeHelmDelimiters_RoundTrips(t *testing.T) {
+	in := "url: ./skeletons/${{ parameters.name }}\nvalue: {{ .Release.Name }}"
+	out := escapeHelmDelimiters(in)
+	if strings.Contains(out, "${{ parameters.name }}") {
+		t.Error("raw Backstage syntax should be escaped")
+	}
+	// Helm rendering the escape yields the original literal.
+	if !strings.Contains(out, `{{ "{{" }}`) || !strings.Contains(out, `{{ "}}" }}`) {
+		t.Errorf("expected escaped delimiters, got: %s", out)
+	}
+}
+
+func TestBuildActivation_EscapesTemplateSyntaxInSubcharts(t *testing.T) {
+	req := &models.ActivationRequest{
+		Customer: models.CustomerDetails{CustomerName: "acme"},
+	}
+	resources := map[models.FeatureID][]kcc.Resource{
+		models.FeatureDeveloperPortal: {
+			{Name: "patterns.yaml", Content: []byte("target: ${{ parameters.name }}\n")},
+		},
+	}
+	files, err := NewActivationBuilder().BuildActivation(req, resources)
+	require.NoError(t, err)
+	for _, f := range files {
+		if strings.HasSuffix(f.Path, "patterns.yaml") {
+			if strings.Contains(string(f.Content), "${{ parameters.name }}") {
+				t.Error("sub-chart template must escape Backstage/Helm delimiters")
+			}
+			return
+		}
+	}
+	t.Fatal("patterns.yaml not placed in a sub-chart")
+}

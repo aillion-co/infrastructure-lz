@@ -118,11 +118,15 @@ feature: %s
 			Content: []byte(helpers),
 		})
 
-		// KCC resource files in templates/
+		// KCC resource files in templates/. These are static manifests, but
+		// Helm treats every file under templates/ as a Go template, so any
+		// literal "{{"/"}}" in the content (e.g. Backstage scaffolder
+		// "${{ ... }}" syntax) must be escaped or `helm install`/`helm
+		// template` fails. Helm renders the escape back to the literal.
 		for _, res := range resources {
 			files = append(files, FileEntry{
 				Path:    path.Join(subChartPath, "templates", res.Name),
-				Content: res.Content,
+				Content: []byte(escapeHelmDelimiters(string(res.Content))),
 			})
 		}
 	}
@@ -159,6 +163,23 @@ func slugify(name string) string {
 
 func sanitizeHelmKey(featureID string) string {
 	return strings.ReplaceAll(featureID, "-", "_")
+}
+
+// helmDelimiterEscaper rewrites literal Go-template delimiters into Helm
+// escape expressions. strings.Replacer does not re-scan its own output, so
+// the "}}" introduced by the "{{" replacement is not double-escaped.
+var helmDelimiterEscaper = strings.NewReplacer(
+	"{{", `{{ "{{" }}`,
+	"}}", `{{ "}}" }}`,
+)
+
+// escapeHelmDelimiters escapes "{{"/"}}" so static content placed under a
+// Helm chart's templates/ directory renders back to the original literal.
+func escapeHelmDelimiters(s string) string {
+	if !strings.Contains(s, "{{") && !strings.Contains(s, "}}") {
+		return s
+	}
+	return helmDelimiterEscaper.Replace(s)
 }
 
 // yamlQuote renders a string as a safe double-quoted YAML scalar so that
