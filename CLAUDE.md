@@ -191,7 +191,7 @@ For changes that affect the web UI or API behavior:
 make preview-deploy
 ```
 
-The preview deploy goes to a GKE namespace `preview-{branch}`. Skaffold handles image
+The preview deploy goes to a GKE namespace `preview-pr-<number>`. Skaffold handles image
 building, pushing, and deploying.
 
 ### 4. Observe Telemetry
@@ -293,7 +293,8 @@ Set `OTEL_EXPORTER_OTLP_ENDPOINT` to the collector address.
 - Unit tests live next to the code: `foo.go` → `foo_test.go`
 - Integration tests in `test/integration/`
 - E2E tests in `test/e2e/`
-- Golden file tests for generated output in `test/fixtures/`
+- Golden file tests for generated output in `internal/generator/kcc/testdata/golden/`
+- Example activation request payloads in `test/fixtures/`
 - Test names: `TestFunctionName_Scenario_ExpectedBehavior`
 
 ### Git — Branch-per-Feature (MANDATORY)
@@ -319,14 +320,20 @@ Every new feature MUST be developed on its own branch. No feature work directly 
 
 ## Environment Variables
 
+Consumed by the server (`internal/config`):
+
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `PORT` | HTTP server port | `8080` |
 | `LOG_LEVEL` | Logging level (debug/info/warn/error) | `info` |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | OpenTelemetry collector endpoint | `localhost:4317` |
-| `GCP_PROJECT_ID` | GCP project for preview deploys | — |
-| `GKE_CLUSTER` | GKE cluster name | — |
-| `GKE_REGION` | GKE cluster region | — |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OpenTelemetry collector endpoint (empty = telemetry disabled) | — |
+| `PRICING_PROVIDER` | Cost estimate backend: `static` or `catalog` (GCP Billing Catalog API) | `static` |
+| `AUTH_ENABLED` | Enforce Google ID token auth on API endpoints | `false` |
+| `AUTH_ALLOWED_AUDIENCES` | Comma-separated OAuth client IDs accepted in the token `aud` claim (required when auth is enabled) | — |
+| `AUTH_ALLOWED_DOMAINS` | Comma-separated email domains permitted (empty = any authenticated user) | — |
+
+`GCP_PROJECT_ID`, `GKE_CLUSTER`, and `GKE_REGION` are **CI/deploy** secrets
+used by the GitHub Actions workflows, not read by the application.
 
 ## CI/CD Pipeline
 
@@ -363,8 +370,13 @@ Claude Code can be triggered as a GitHub Actions agent to:
 - `go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc` — OTLP trace exporter
 - `go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc` — OTLP metric exporter
 - `github.com/stretchr/testify` — Test assertions
-- `helm.sh/helm/v3` — Helm chart validation
-- `sigs.k8s.io/yaml` — YAML marshaling for KCC resources
+- `gopkg.in/yaml.v3` — YAML parsing in tests
+- `cloud.google.com/go/billing` — GCP Cloud Billing Catalog API (catalog pricing provider)
+- `google.golang.org/api`, `google.golang.org/grpc` — Google API client and transport
+
+Helm and `kubectl` are external CLIs used for validation in the Makefile
+and CI (`helm lint`/`helm template`); the application itself imports no
+Helm library and emits charts as plain templated strings.
 
 ## Anti-Patterns to Avoid
 
